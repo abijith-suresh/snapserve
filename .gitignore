@@ -1,0 +1,15 @@
+# Node / Next.js
+frontend/.next/
+frontend/node_modules/
+frontend/.env
+
+# Java / Spring Boot
+backend/target/
+backend/.idea/
+backend/.env
+backend/*.iml
+
+# OS/Editor junk
+.DS_Store
+*.log
+*.class
