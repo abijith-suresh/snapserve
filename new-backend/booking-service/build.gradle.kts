@@ -31,6 +31,8 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-web")
 	implementation("org.springframework.cloud:spring-cloud-starter-config")
 	implementation("org.springframework.cloud:spring-cloud-starter-netflix-eureka-client")
+	implementation("org.springframework.cloud:spring-cloud-starter-openfeign")
+	implementation("org.springframework.boot:spring-boot-starter-validation")
 	compileOnly("org.projectlombok:lombok")
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
 	annotationProcessor("org.projectlombok:lombok")
