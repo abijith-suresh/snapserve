@@ -12,7 +12,8 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @NoArgsConstructor
 public class AdminRequest {
-    private String fullName;
+    private String firstName;
+    private String lastName;
     private String email;
     private String phoneNumber;
     private String address;
