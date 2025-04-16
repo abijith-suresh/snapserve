@@ -1,4 +1,4 @@
-package com.snapserve.review_service;
+package com.snapserve.reviewservice;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

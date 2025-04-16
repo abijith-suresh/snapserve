@@ -1,4 +1,4 @@
-package com.snapserve.review_service;
+package com.snapserve.reviewservice;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
