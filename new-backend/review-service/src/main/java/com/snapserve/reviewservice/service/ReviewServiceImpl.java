@@ -1,5 +1,6 @@
 package com.snapserve.reviewservice.service;
 
+import com.snapserve.reviewservice.dto.RatingSummaryResponse;
 import com.snapserve.reviewservice.dto.ReviewRequest;
 import com.snapserve.reviewservice.dto.ReviewResponse;
 import com.snapserve.reviewservice.mapper.ReviewMapper;
@@ -60,4 +61,24 @@ public class ReviewServiceImpl implements ReviewService {
         review.setHelpfulCount(review.getHelpfulCount() + 1);
         reviewRepository.save(review);
     }
+
+    @Override
+    public RatingSummaryResponse getRatingSummaryForSpecialist(String specialistId) {
+        List<Review> reviews = reviewRepository.findBySpecialistId(specialistId);
+        if (reviews.isEmpty()) {
+            throw new NoSuchElementException("No reviews found for specialist");
+        }
+
+        double average = reviews.stream()
+                .mapToInt(Review::getRating)
+                .average()
+                .orElse(0.0);
+
+        return RatingSummaryResponse.builder()
+                .specialistId(specialistId)
+                .averageRating(Math.round(average * 10.0) / 10.0)
+                .totalReviews(reviews.size())
+                .build();
+    }
+
 }

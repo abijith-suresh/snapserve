@@ -1,5 +1,6 @@
 package com.snapserve.reviewservice.service;
 
+import com.snapserve.reviewservice.dto.RatingSummaryResponse;
 import com.snapserve.reviewservice.dto.ReviewRequest;
 import com.snapserve.reviewservice.dto.ReviewResponse;
 
@@ -12,4 +13,5 @@ public interface ReviewService {
     List<ReviewResponse> getReviewsByCustomer(String customerId);
     void deleteReview(String id);
     void markHelpful(String id);
+    RatingSummaryResponse getRatingSummaryForSpecialist(String specialistId);
 }

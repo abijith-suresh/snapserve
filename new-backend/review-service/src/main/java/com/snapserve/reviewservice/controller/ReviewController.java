@@ -1,5 +1,6 @@
 package com.snapserve.reviewservice.controller;
 
+import com.snapserve.reviewservice.dto.RatingSummaryResponse;
 import com.snapserve.reviewservice.dto.ReviewRequest;
 import com.snapserve.reviewservice.dto.ReviewResponse;
 import com.snapserve.reviewservice.service.ReviewService;
@@ -49,5 +50,11 @@ public class ReviewController {
         reviewService.markHelpful(id);
         return ResponseEntity.ok().build();
     }
+
+    @GetMapping("/specialist/{specialistId}/summary")
+    public ResponseEntity<RatingSummaryResponse> getRatingSummary(@PathVariable String specialistId) {
+        return ResponseEntity.ok(reviewService.getRatingSummaryForSpecialist(specialistId));
+    }
+
 }
 
