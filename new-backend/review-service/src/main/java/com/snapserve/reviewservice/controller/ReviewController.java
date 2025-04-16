@@ -1,12 +1,13 @@
 package com.snapserve.reviewservice.controller;
 
+import com.snapserve.reviewservice.dto.ApiResponse;
 import com.snapserve.reviewservice.dto.RatingSummaryResponse;
 import com.snapserve.reviewservice.dto.ReviewRequest;
 import com.snapserve.reviewservice.dto.ReviewResponse;
 import com.snapserve.reviewservice.service.ReviewService;
+import com.snapserve.reviewservice.util.ResponseBuilder;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,23 +21,23 @@ public class ReviewController {
     private final ReviewService reviewService;
 
     @PostMapping
-    public ResponseEntity<ReviewResponse> createReview(@Valid @RequestBody ReviewRequest request) {
-        return new ResponseEntity<>(reviewService.createReview(request), HttpStatus.CREATED);
+    public ResponseEntity<ApiResponse<ReviewResponse>> createReview(@Valid @RequestBody ReviewRequest request) {
+        return ResponseBuilder.created(reviewService.createReview(request));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ReviewResponse> getReview(@PathVariable String id) {
-        return ResponseEntity.ok(reviewService.getReviewById(id));
+    public ResponseEntity<ApiResponse<ReviewResponse>> getReview(@PathVariable String id) {
+        return ResponseBuilder.ok(reviewService.getReviewById(id));
     }
 
     @GetMapping("/specialist/{specialistId}")
-    public ResponseEntity<List<ReviewResponse>> getReviewsBySpecialist(@PathVariable String specialistId) {
-        return ResponseEntity.ok(reviewService.getReviewsBySpecialist(specialistId));
+    public ResponseEntity<ApiResponse<List<ReviewResponse>>> getReviewsBySpecialist(@PathVariable String specialistId) {
+        return ResponseBuilder.ok(reviewService.getReviewsBySpecialist(specialistId));
     }
 
     @GetMapping("/customer/{customerId}")
-    public ResponseEntity<List<ReviewResponse>> getReviewsByCustomer(@PathVariable String customerId) {
-        return ResponseEntity.ok(reviewService.getReviewsByCustomer(customerId));
+    public ResponseEntity<ApiResponse<List<ReviewResponse>>> getReviewsByCustomer(@PathVariable String customerId) {
+        return ResponseBuilder.ok(reviewService.getReviewsByCustomer(customerId));
     }
 
     @DeleteMapping("/{id}")
@@ -52,8 +53,8 @@ public class ReviewController {
     }
 
     @GetMapping("/specialist/{specialistId}/summary")
-    public ResponseEntity<RatingSummaryResponse> getRatingSummary(@PathVariable String specialistId) {
-        return ResponseEntity.ok(reviewService.getRatingSummaryForSpecialist(specialistId));
+    public ResponseEntity<ApiResponse<RatingSummaryResponse>> getRatingSummary(@PathVariable String specialistId) {
+        return ResponseBuilder.ok(reviewService.getRatingSummaryForSpecialist(specialistId));
     }
 
 }
