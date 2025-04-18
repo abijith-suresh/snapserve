@@ -70,4 +70,13 @@ public class ResponseBuilder {
         return ResponseEntity.ok(response);
     }
 
+    public static ApiResponse<String> error(HttpStatus status, String message) {
+        return ApiResponse.<String>builder()
+                .timestamp(LocalDateTime.now())
+                .status(status.value())
+                .message(message)
+                .data(null)
+                .build();
+    }
+
 }

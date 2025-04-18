@@ -2,6 +2,7 @@ package com.snapserve.userservice.service;
 
 import com.snapserve.userservice.dto.SpecialistRequest;
 import com.snapserve.userservice.dto.SpecialistResponse;
+import com.snapserve.userservice.exception.ResourceNotFoundException;
 import com.snapserve.userservice.mapper.SpecialistMapper;
 import com.snapserve.userservice.model.Specialist;
 import com.snapserve.userservice.repository.SpecialistRepository;
@@ -28,7 +29,7 @@ public class SpecialistServiceImpl implements GenericUserService<Specialist, Spe
     @Override
     public SpecialistResponse getUserById(String id) {
         Specialist specialist = specialistRepository.findById(new ObjectId(id))
-                .orElseThrow(() -> new RuntimeException("Specialist not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Specialist", id));
         return SpecialistMapper.toResponse(specialist);
     }
 
@@ -43,7 +44,7 @@ public class SpecialistServiceImpl implements GenericUserService<Specialist, Spe
     @Override
     public SpecialistResponse updateUser(String id, SpecialistRequest request) {
         Specialist existing = specialistRepository.findById(new ObjectId(id))
-                .orElseThrow(() -> new RuntimeException("Specialist not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Specialist", id));
 
         Specialist updated = SpecialistMapper.toEntity(request);
         updated.setId(existing.getId());
@@ -55,7 +56,7 @@ public class SpecialistServiceImpl implements GenericUserService<Specialist, Spe
     @Override
     public void deleteUser(String id) {
         Specialist specialist = specialistRepository.findById(new ObjectId(id))
-                .orElseThrow(() -> new RuntimeException("Specialist not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Specialist", id));
         specialistRepository.delete(specialist);
     }
 }

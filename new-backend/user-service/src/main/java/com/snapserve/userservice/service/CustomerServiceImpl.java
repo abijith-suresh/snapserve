@@ -2,6 +2,7 @@ package com.snapserve.userservice.service;
 
 import com.snapserve.userservice.dto.CustomerRequest;
 import com.snapserve.userservice.dto.CustomerResponse;
+import com.snapserve.userservice.exception.ResourceNotFoundException;
 import com.snapserve.userservice.mapper.CustomerMapper;
 import com.snapserve.userservice.model.Customer;
 import com.snapserve.userservice.repository.CustomerRepository;
@@ -28,7 +29,7 @@ public class CustomerServiceImpl implements GenericUserService<Customer, Custome
     @Override
     public CustomerResponse getUserById(String id) {
         Customer customer = customerRepository.findById(new ObjectId(id))
-                .orElseThrow(() -> new RuntimeException("Customer not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Customer", id));
         return CustomerMapper.toResponse(customer);
     }
 
@@ -43,7 +44,7 @@ public class CustomerServiceImpl implements GenericUserService<Customer, Custome
     @Override
     public CustomerResponse updateUser(String id, CustomerRequest request) {
         Customer existing = customerRepository.findById(new ObjectId(id))
-                .orElseThrow(() -> new RuntimeException("Customer not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Customer", id));
 
         Customer updated = CustomerMapper.toEntity(request);
         updated.setId(existing.getId());
@@ -55,7 +56,7 @@ public class CustomerServiceImpl implements GenericUserService<Customer, Custome
     @Override
     public void deleteUser(String id) {
         Customer customer = customerRepository.findById(new ObjectId(id))
-                .orElseThrow(() -> new RuntimeException("Customer not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Customer", id));
         customerRepository.delete(customer);
     }
 }
