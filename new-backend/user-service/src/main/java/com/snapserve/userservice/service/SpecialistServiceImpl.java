@@ -1,5 +1,6 @@
 package com.snapserve.userservice.service;
 
+import com.snapserve.userservice.dto.PagedResponse;
 import com.snapserve.userservice.dto.SpecialistRequest;
 import com.snapserve.userservice.dto.SpecialistResponse;
 import com.snapserve.userservice.exception.ResourceNotFoundException;
@@ -8,6 +9,8 @@ import com.snapserve.userservice.model.Specialist;
 import com.snapserve.userservice.repository.SpecialistRepository;
 import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -34,11 +37,22 @@ public class SpecialistServiceImpl implements GenericUserService<Specialist, Spe
     }
 
     @Override
-    public List<SpecialistResponse> getAllUsers() {
-        return specialistRepository.findAll()
+    public PagedResponse<SpecialistResponse> getAllUsers(Pageable pageable) {
+        Page<Specialist> page = specialistRepository.findAll(pageable);
+
+        List<SpecialistResponse> specialistResponses = page.getContent()
                 .stream()
                 .map(SpecialistMapper::toResponse)
-                .collect(Collectors.toList());
+                .toList();
+
+        return PagedResponse.<SpecialistResponse>builder()
+                .content(specialistResponses)
+                .pageNumber(page.getNumber())
+                .pageSize(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .last(page.isLast())
+                .build();
     }
 
     @Override

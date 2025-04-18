@@ -3,15 +3,15 @@ package com.snapserve.userservice.controller;
 import com.snapserve.userservice.dto.ApiResponse;
 import com.snapserve.userservice.dto.CustomerRequest;
 import com.snapserve.userservice.dto.CustomerResponse;
+import com.snapserve.userservice.dto.PagedResponse;
 import com.snapserve.userservice.model.Customer;
 import com.snapserve.userservice.service.GenericUserService;
 import com.snapserve.userservice.util.ResponseBuilder;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/customers")
@@ -33,9 +33,8 @@ public class CustomerController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<CustomerResponse>>> getAllUsers() {
-        List<CustomerResponse> responses = customerService.getAllUsers();
-        return ResponseBuilder.ok(responses, "Customers retrieved successfully");
+    public ResponseEntity<ApiResponse<PagedResponse<CustomerResponse>>> getAllCustomers(Pageable pageable) {
+        return ResponseBuilder.ok(customerService.getAllUsers(pageable));
     }
 
     @PutMapping("/{id}")

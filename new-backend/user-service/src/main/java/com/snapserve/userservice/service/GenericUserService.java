@@ -1,11 +1,12 @@
 package com.snapserve.userservice.service;
 
-import java.util.List;
+import com.snapserve.userservice.dto.PagedResponse;
+import org.springframework.data.domain.Pageable;
 
 public interface GenericUserService<ENTITY, REQUEST, RESPONSE> {
     RESPONSE createUser(REQUEST request);
     RESPONSE getUserById(String id);
-    List<RESPONSE> getAllUsers();
+    PagedResponse<RESPONSE> getAllUsers(Pageable pageable);
     RESPONSE updateUser(String id, REQUEST request);
     void deleteUser(String id);
 }

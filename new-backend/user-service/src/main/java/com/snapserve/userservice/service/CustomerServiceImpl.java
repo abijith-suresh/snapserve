@@ -2,12 +2,15 @@ package com.snapserve.userservice.service;
 
 import com.snapserve.userservice.dto.CustomerRequest;
 import com.snapserve.userservice.dto.CustomerResponse;
+import com.snapserve.userservice.dto.PagedResponse;
 import com.snapserve.userservice.exception.ResourceNotFoundException;
 import com.snapserve.userservice.mapper.CustomerMapper;
 import com.snapserve.userservice.model.Customer;
 import com.snapserve.userservice.repository.CustomerRepository;
 import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -34,11 +37,22 @@ public class CustomerServiceImpl implements GenericUserService<Customer, Custome
     }
 
     @Override
-    public List<CustomerResponse> getAllUsers() {
-        return customerRepository.findAll()
+    public PagedResponse<CustomerResponse> getAllUsers(Pageable pageable) {
+        Page<Customer> page = customerRepository.findAll(pageable);
+
+        List<CustomerResponse> customerResponses = page.getContent()
                 .stream()
                 .map(CustomerMapper::toResponse)
-                .collect(Collectors.toList());
+                .toList();
+
+        return PagedResponse.<CustomerResponse>builder()
+                .content(customerResponses)
+                .pageNumber(page.getNumber())
+                .pageSize(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .last(page.isLast())
+                .build();
     }
 
     @Override

@@ -2,12 +2,15 @@ package com.snapserve.userservice.service;
 
 import com.snapserve.userservice.dto.AdminRequest;
 import com.snapserve.userservice.dto.AdminResponse;
+import com.snapserve.userservice.dto.PagedResponse;
 import com.snapserve.userservice.exception.ResourceNotFoundException;
 import com.snapserve.userservice.mapper.AdminMapper;
 import com.snapserve.userservice.model.Admin;
 import com.snapserve.userservice.repository.AdminRepository;
 import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -34,11 +37,22 @@ public class AdminServiceImpl implements GenericUserService<Admin, AdminRequest,
     }
 
     @Override
-    public List<AdminResponse> getAllUsers() {
-        return adminRepository.findAll()
+    public PagedResponse<AdminResponse> getAllUsers(Pageable pageable) {
+        Page<Admin> page = adminRepository.findAll(pageable);
+
+        List<AdminResponse> adminResponses = page.getContent()
                 .stream()
                 .map(AdminMapper::toResponse)
-                .collect(Collectors.toList());
+                .toList();
+
+        return PagedResponse.<AdminResponse>builder()
+                .content(adminResponses)
+                .pageNumber(page.getNumber())
+                .pageSize(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .last(page.isLast())
+                .build();
     }
 
     @Override

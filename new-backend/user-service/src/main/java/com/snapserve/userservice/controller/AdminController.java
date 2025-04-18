@@ -3,16 +3,15 @@ package com.snapserve.userservice.controller;
 import com.snapserve.userservice.dto.AdminRequest;
 import com.snapserve.userservice.dto.AdminResponse;
 import com.snapserve.userservice.dto.ApiResponse;
+import com.snapserve.userservice.dto.PagedResponse;
 import com.snapserve.userservice.model.Admin;
 import com.snapserve.userservice.service.GenericUserService;
 import com.snapserve.userservice.util.ResponseBuilder;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/admins")
@@ -34,9 +33,8 @@ public class AdminController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<AdminResponse>>> getAllUsers() {
-        List<AdminResponse> responses = adminService.getAllUsers();
-        return ResponseBuilder.ok(responses, "Admins retrieved successfully");
+    public ResponseEntity<ApiResponse<PagedResponse<AdminResponse>>> getAllCustomers(Pageable pageable) {
+        return ResponseBuilder.ok(adminService.getAllUsers(pageable));
     }
 
     @PutMapping("/{id}")

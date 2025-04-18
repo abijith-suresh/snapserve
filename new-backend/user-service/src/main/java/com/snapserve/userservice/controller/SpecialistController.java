@@ -1,6 +1,7 @@
 package com.snapserve.userservice.controller;
 
 import com.snapserve.userservice.dto.ApiResponse;
+import com.snapserve.userservice.dto.PagedResponse;
 import com.snapserve.userservice.dto.SpecialistRequest;
 import com.snapserve.userservice.dto.SpecialistResponse;
 import com.snapserve.userservice.model.Specialist;
@@ -8,10 +9,9 @@ import com.snapserve.userservice.service.GenericUserService;
 import com.snapserve.userservice.util.ResponseBuilder;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/specialists")
@@ -33,9 +33,8 @@ public class SpecialistController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<SpecialistResponse>>> getAllUsers() {
-        List<SpecialistResponse> responses = specialistService.getAllUsers();
-        return ResponseBuilder.ok(responses, "Specialists retrieved successfully");
+    public ResponseEntity<ApiResponse<PagedResponse<SpecialistResponse>>> getAllCustomers(Pageable pageable) {
+        return ResponseBuilder.ok(specialistService.getAllUsers(pageable));
     }
 
     @PutMapping("/{id}")
