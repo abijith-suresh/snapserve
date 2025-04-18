@@ -1,5 +1,8 @@
 package com.snapserve.userservice.service;
 
+import com.snapserve.userservice.dto.SpecialistRequest;
+import com.snapserve.userservice.dto.SpecialistResponse;
+import com.snapserve.userservice.mapper.SpecialistMapper;
 import com.snapserve.userservice.model.Specialist;
 import com.snapserve.userservice.repository.SpecialistRepository;
 import lombok.RequiredArgsConstructor;
@@ -7,37 +10,52 @@ import org.bson.types.ObjectId;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class SpecialistServiceImpl implements GenericUserService<Specialist> {
+public class SpecialistServiceImpl implements GenericUserService<Specialist, SpecialistRequest, SpecialistResponse> {
 
-    private SpecialistRepository specialistRepository;
+    private final SpecialistRepository specialistRepository;
 
     @Override
-    public Specialist createUser(Specialist user) {
-        return specialistRepository.save(user);
+    public SpecialistResponse createUser(SpecialistRequest request) {
+        Specialist specialist = SpecialistMapper.toEntity(request);
+        Specialist saved = specialistRepository.save(specialist);
+        return SpecialistMapper.toResponse(saved);
     }
 
     @Override
-    public Specialist getUserById(String id) {
-        return specialistRepository.findById(new ObjectId(id))
+    public SpecialistResponse getUserById(String id) {
+        Specialist specialist = specialistRepository.findById(new ObjectId(id))
                 .orElseThrow(() -> new RuntimeException("Specialist not found"));
+        return SpecialistMapper.toResponse(specialist);
     }
 
     @Override
-    public List<Specialist> getAllUsers() {
-        return specialistRepository.findAll();
+    public List<SpecialistResponse> getAllUsers() {
+        return specialistRepository.findAll()
+                .stream()
+                .map(SpecialistMapper::toResponse)
+                .collect(Collectors.toList());
     }
 
     @Override
-    public Specialist updateUser(String id, Specialist user) {
-        user.setId(new ObjectId(id));
-        return specialistRepository.save(user);
+    public SpecialistResponse updateUser(String id, SpecialistRequest request) {
+        Specialist existing = specialistRepository.findById(new ObjectId(id))
+                .orElseThrow(() -> new RuntimeException("Specialist not found"));
+
+        Specialist updated = SpecialistMapper.toEntity(request);
+        updated.setId(existing.getId());
+
+        Specialist saved = specialistRepository.save(updated);
+        return SpecialistMapper.toResponse(saved);
     }
 
     @Override
     public void deleteUser(String id) {
-        specialistRepository.deleteById(new ObjectId(id));
+        Specialist specialist = specialistRepository.findById(new ObjectId(id))
+                .orElseThrow(() -> new RuntimeException("Specialist not found"));
+        specialistRepository.delete(specialist);
     }
 }

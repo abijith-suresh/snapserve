@@ -1,5 +1,8 @@
 package com.snapserve.userservice.service;
 
+import com.snapserve.userservice.dto.CustomerRequest;
+import com.snapserve.userservice.dto.CustomerResponse;
+import com.snapserve.userservice.mapper.CustomerMapper;
 import com.snapserve.userservice.model.Customer;
 import com.snapserve.userservice.repository.CustomerRepository;
 import lombok.RequiredArgsConstructor;
@@ -7,37 +10,53 @@ import org.bson.types.ObjectId;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class CustomerServiceImpl implements GenericUserService<Customer> {
+public class CustomerServiceImpl implements GenericUserService<Customer, CustomerRequest, CustomerResponse> {
 
-    private CustomerRepository customerRepository;
+    private final CustomerRepository customerRepository;
 
     @Override
-    public Customer createUser(Customer user) {
-        return customerRepository.save(user);
+    public CustomerResponse createUser(CustomerRequest request) {
+        Customer customer = CustomerMapper.toEntity(request);
+        Customer saved = customerRepository.save(customer);
+        return CustomerMapper.toResponse(saved);
     }
 
     @Override
-    public Customer getUserById(String id) {
-        return customerRepository.findById(new ObjectId(id))
+    public CustomerResponse getUserById(String id) {
+        Customer customer = customerRepository.findById(new ObjectId(id))
                 .orElseThrow(() -> new RuntimeException("Customer not found"));
+        return CustomerMapper.toResponse(customer);
     }
 
     @Override
-    public List<Customer> getAllUsers() {
-        return customerRepository.findAll();
+    public List<CustomerResponse> getAllUsers() {
+        return customerRepository.findAll()
+                .stream()
+                .map(CustomerMapper::toResponse)
+                .collect(Collectors.toList());
     }
 
     @Override
-    public Customer updateUser(String id, Customer user) {
-        user.setId(new ObjectId(id));
-        return customerRepository.save(user);
+    public CustomerResponse updateUser(String id, CustomerRequest request) {
+        Customer existing = customerRepository.findById(new ObjectId(id))
+                .orElseThrow(() -> new RuntimeException("Customer not found"));
+
+        Customer updated = CustomerMapper.toEntity(request);
+        updated.setId(existing.getId());
+
+        Customer saved = customerRepository.save(updated);
+        return CustomerMapper.toResponse(saved);
     }
 
     @Override
     public void deleteUser(String id) {
-        customerRepository.deleteById(new ObjectId(id));
+        Customer customer = customerRepository.findById(new ObjectId(id))
+                .orElseThrow(() -> new RuntimeException("Customer not found"));
+        customerRepository.delete(customer);
     }
 }
+
