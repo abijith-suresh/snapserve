@@ -25,3 +25,9 @@ management:
 #  instance:
 #    instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
 #    prefer-ip-address: true
+
+feign:
+  client:
+    config:
+      default:
+        errorDecoder: com.snapserve.bookingservice.config.FeignErrorDecoder

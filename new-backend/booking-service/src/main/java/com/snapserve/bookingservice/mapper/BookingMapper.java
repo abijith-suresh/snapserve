@@ -1,13 +1,18 @@
 package com.snapserve.bookingservice.mapper;
 
+import com.snapserve.bookingservice.client.UserClient;
 import com.snapserve.bookingservice.dto.BookingRequest;
 import com.snapserve.bookingservice.dto.BookingResponse;
 import com.snapserve.bookingservice.model.Booking;
+import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class BookingMapper {
+
+    private final UserClient userClient;
 
     public Booking toEntity(BookingRequest request) {
         return Booking.builder()
@@ -24,8 +29,8 @@ public class BookingMapper {
     public BookingResponse toResponse(Booking booking) {
         return BookingResponse.builder()
                 .id(booking.getId().toHexString())
-                .customerId(booking.getCustomerId())
-                .specialistId(booking.getSpecialistId())
+                .customer(userClient.getUserInfoById(booking.getCustomerId()))
+                .specialist(userClient.getUserInfoById(booking.getSpecialistId()))
                 .bookingDate(booking.getBookingDate())
                 .appointmentTime(booking.getAppointmentTime())
                 .service(booking.getService())

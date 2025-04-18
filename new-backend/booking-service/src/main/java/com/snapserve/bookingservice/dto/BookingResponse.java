@@ -11,8 +11,8 @@ import java.time.LocalDateTime;
 @Builder
 public class BookingResponse {
     private String id;
-    private String customerId;
-    private String specialistId;
+    private UserInfoResponse customer;
+    private UserInfoResponse specialist;
     private LocalDateTime bookingDate;
     private LocalDateTime appointmentTime;
     private String service;
