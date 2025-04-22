@@ -29,4 +29,16 @@ public class UserManagementController {
     public ApiResponse<UserDetailResponse> getUserDetails(@PathVariable String id) {
         return ResponseBuilder.ok(userManagementService.getUserDetails(id)).getBody();
     }
+
+    @PatchMapping("/users/{id}/activate")
+    public ApiResponse<String> activateUser(@PathVariable String id) {
+        userManagementService.updateUserActiveStatus(id, true);
+        return ResponseBuilder.ok("User activated successfully.").getBody();
+    }
+
+    @PatchMapping("/users/{id}/deactivate")
+    public ApiResponse<String> deactivateUser(@PathVariable String id) {
+        userManagementService.updateUserActiveStatus(id, false);
+        return ResponseBuilder.ok("User deactivated successfully.").getBody();
+    }
 }

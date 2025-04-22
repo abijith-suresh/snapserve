@@ -8,4 +8,5 @@ import org.springframework.data.domain.Pageable;
 public interface UserManagementService {
     PagedResponse<UserSummaryResponse> getAllUsers(String type, Pageable pageable, String search);
     UserDetailResponse getUserDetails(String id);
+    void updateUserActiveStatus(String id, boolean active);
 }

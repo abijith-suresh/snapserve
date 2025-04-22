@@ -3,6 +3,7 @@ package com.snapserve.userservice.service;
 import com.snapserve.userservice.dto.UserDetailResponse;
 import com.snapserve.userservice.dto.UserSummaryResponse;
 import com.snapserve.userservice.dto.PagedResponse;
+import com.snapserve.userservice.exception.BadRequestException;
 import com.snapserve.userservice.exception.ResourceNotFoundException;
 import com.snapserve.userservice.mapper.UserDetailMapper;
 import com.snapserve.userservice.mapper.UserSummaryMapper;
@@ -84,6 +85,31 @@ public class UserManagementServiceImpl implements UserManagementService {
         Specialist specialist = specialistRepository.findById(new ObjectId(id)).orElse(null);
         if (specialist != null) {
             return UserDetailMapper.fromSpecialist(specialist);
+        }
+
+        throw new ResourceNotFoundException("User", id);
+    }
+
+    @Override
+    public void updateUserActiveStatus(String id, boolean active) {
+        Customer customer = customerRepository.findById(new ObjectId(id)).orElse(null);
+        if (customer != null) {
+            if (Boolean.TRUE.equals(customer.getActive()) == active) {
+                throw new BadRequestException("Customer is already " + (active ? "active" : "inactive"));
+            }
+            customer.setActive(active);
+            customerRepository.save(customer);
+            return;
+        }
+
+        Specialist specialist = specialistRepository.findById(new ObjectId(id)).orElse(null);
+        if (specialist != null) {
+            if (Boolean.TRUE.equals(specialist.getActive()) == active) {
+                throw new BadRequestException("Specialist is already " + (active ? "active" : "inactive"));
+            }
+            specialist.setActive(active);
+            specialistRepository.save(specialist);
+            return;
         }
 
         throw new ResourceNotFoundException("User", id);
