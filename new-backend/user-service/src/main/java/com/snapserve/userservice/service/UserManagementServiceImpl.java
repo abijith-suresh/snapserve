@@ -1,11 +1,17 @@
 package com.snapserve.userservice.service;
 
+import com.snapserve.userservice.dto.UserDetailResponse;
 import com.snapserve.userservice.dto.UserSummaryResponse;
 import com.snapserve.userservice.dto.PagedResponse;
+import com.snapserve.userservice.exception.ResourceNotFoundException;
+import com.snapserve.userservice.mapper.UserDetailMapper;
 import com.snapserve.userservice.mapper.UserSummaryMapper;
+import com.snapserve.userservice.model.Customer;
+import com.snapserve.userservice.model.Specialist;
 import com.snapserve.userservice.repository.CustomerRepository;
 import com.snapserve.userservice.repository.SpecialistRepository;
 import lombok.RequiredArgsConstructor;
+import org.bson.types.ObjectId;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
@@ -66,6 +72,21 @@ public class UserManagementServiceImpl implements UserManagementService {
                 .totalPages((int) Math.ceil((double) users.size() / pageable.getPageSize()))
                 .last(users.size() <= pageable.getPageSize())
                 .build();
+    }
+
+    @Override
+    public UserDetailResponse getUserDetails(String id) {
+        Customer customer = customerRepository.findById(new ObjectId(id)).orElse(null);
+        if (customer != null) {
+            return UserDetailMapper.fromCustomer(customer);
+        }
+
+        Specialist specialist = specialistRepository.findById(new ObjectId(id)).orElse(null);
+        if (specialist != null) {
+            return UserDetailMapper.fromSpecialist(specialist);
+        }
+
+        throw new ResourceNotFoundException("User", id);
     }
 
     private boolean matchesSearch(String name, String email, String search) {
