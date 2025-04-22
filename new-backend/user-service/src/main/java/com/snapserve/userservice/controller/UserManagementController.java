@@ -4,11 +4,19 @@ import com.snapserve.userservice.dto.UserDetailResponse;
 import com.snapserve.userservice.dto.UserSummaryResponse;
 import com.snapserve.userservice.dto.ApiResponse;
 import com.snapserve.userservice.dto.PagedResponse;
+import com.snapserve.userservice.dto.booking.BookingResponse;
+import com.snapserve.userservice.dto.booking.BookingSearchCriteria;
+import com.snapserve.userservice.enums.BookingStatus;
 import com.snapserve.userservice.service.UserManagementService;
 import com.snapserve.userservice.util.ResponseBuilder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/admin")
@@ -40,5 +48,13 @@ public class UserManagementController {
     public ApiResponse<String> deactivateUser(@PathVariable String id) {
         userManagementService.updateUserActiveStatus(id, false);
         return ResponseBuilder.ok("User deactivated successfully.").getBody();
+    }
+
+    @GetMapping("/bookings")
+    public ApiResponse<PagedResponse<BookingResponse>> getAllBookings(
+            BookingSearchCriteria searchCriteria,
+            @PageableDefault(page = 0, size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        return ResponseBuilder.ok(userManagementService.getAllBookings(pageable, searchCriteria)).getBody();
     }
 }

@@ -1,8 +1,11 @@
 package com.snapserve.userservice.service;
 
+import com.snapserve.userservice.client.BookingClient;
 import com.snapserve.userservice.dto.UserDetailResponse;
 import com.snapserve.userservice.dto.UserSummaryResponse;
 import com.snapserve.userservice.dto.PagedResponse;
+import com.snapserve.userservice.dto.booking.BookingResponse;
+import com.snapserve.userservice.dto.booking.BookingSearchCriteria;
 import com.snapserve.userservice.exception.BadRequestException;
 import com.snapserve.userservice.exception.ResourceNotFoundException;
 import com.snapserve.userservice.mapper.UserDetailMapper;
@@ -14,6 +17,7 @@ import com.snapserve.userservice.repository.SpecialistRepository;
 import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -26,6 +30,23 @@ public class UserManagementServiceImpl implements UserManagementService {
 
     private final CustomerRepository customerRepository;
     private final SpecialistRepository specialistRepository;
+    private final BookingClient bookingClient;
+
+    @Override
+    public PagedResponse<BookingResponse> getAllBookings(Pageable pageable, BookingSearchCriteria searchCriteria) {
+        return bookingClient.getBookings(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                sortToString(pageable.getSort()),
+                searchCriteria.getCustomerId(),
+                searchCriteria.getSpecialistId(),
+                searchCriteria.getStatus(),
+                searchCriteria.getService(),
+                searchCriteria.getFromDate(),
+                searchCriteria.getToDate()
+        );
+    }
+
 
     @Override
     public PagedResponse<UserSummaryResponse> getAllUsers(String type, Pageable pageable, String search) {
@@ -114,6 +135,16 @@ public class UserManagementServiceImpl implements UserManagementService {
 
         throw new ResourceNotFoundException("User", id);
     }
+
+    private String sortToString(Sort sort) {
+        if (sort == null || sort.isUnsorted()) {
+            return null;
+        }
+        return sort.stream()
+                .map(order -> order.getProperty() + "," + order.getDirection().name().toLowerCase())
+                .collect(Collectors.joining(","));
+    }
+
 
     private boolean matchesSearch(String name, String email, String search) {
         if (search == null || search.isEmpty()) return true;

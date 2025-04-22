@@ -9,8 +9,6 @@ import com.snapserve.bookingservice.model.Booking;
 import com.snapserve.bookingservice.repository.BookingRepository;
 import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
@@ -70,35 +68,7 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public PagedResponse<BookingResponse> getBookingsWithPaginationAndSearch(Pageable pageable, BookingSearchCriteria searchCriteria) {
-        Page<Booking> page = bookingRepository.findAll(PageRequest.of(pageable.getPageNumber(), pageable.getPageSize()));
-
-        List<Booking> bookings = page.getContent()
-                .stream()
-                .filter(booking -> matchesSearchCriteria(booking, searchCriteria))
-                .toList();
-
-        List<BookingResponse> bookingResponses = bookings.stream()
-                .map(mapper::toResponse)
-                .toList();
-
-        return PagedResponse.<BookingResponse>builder()
-                .content(bookingResponses)
-                .pageNumber(pageable.getPageNumber())
-                .pageSize(pageable.getPageSize())
-                .totalElements(page.getTotalElements())
-                .totalPages(page.getTotalPages())
-                .last(page.isLast())
-                .build();
+        return bookingRepository.searchBookings(pageable, searchCriteria);
     }
 
-    private boolean matchesSearchCriteria(Booking booking, BookingSearchCriteria searchCriteria) {
-        if (searchCriteria == null) return true;
-
-        boolean matchesStatus = searchCriteria.getStatus() == null || booking.getStatus().equals(searchCriteria.getStatus());
-        boolean matchesCustomerId = searchCriteria.getCustomerId() == null || booking.getCustomerId().contains(searchCriteria.getCustomerId());
-        boolean matchesSpecialistId = searchCriteria.getSpecialistId() == null || booking.getSpecialistId().contains(searchCriteria.getSpecialistId());
-        boolean matchesService = searchCriteria.getService() == null || booking.getService().contains(searchCriteria.getService());
-
-        return matchesStatus && matchesCustomerId && matchesSpecialistId && matchesService;
-    }
 }
