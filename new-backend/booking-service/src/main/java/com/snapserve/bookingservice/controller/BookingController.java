@@ -1,16 +1,18 @@
 package com.snapserve.bookingservice.controller;
 
-import com.snapserve.bookingservice.dto.ApiResponse;
-import com.snapserve.bookingservice.dto.BookingRequest;
-import com.snapserve.bookingservice.dto.BookingResponse;
+import com.snapserve.bookingservice.dto.*;
+import com.snapserve.bookingservice.model.BookingStatus;
 import com.snapserve.bookingservice.service.BookingService;
 import com.snapserve.bookingservice.util.ResponseBuilder;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -44,5 +46,29 @@ public class BookingController {
     public ResponseEntity<ApiResponse<Void>> deleteBooking(@PathVariable String id) {
         bookingService.deleteBooking(id);
         return ResponseBuilder.deleted("Booking deleted successfully");
+    }
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<PagedResponse<BookingResponse>>> getBookingsWithPaginationAndSearch(
+            @RequestParam(value = "customerId", required = false) String customerId,
+            @RequestParam(value = "specialistId", required = false) String specialistId,
+            @RequestParam(value = "status", required = false) BookingStatus status,
+            @RequestParam(value = "service", required = false) String service,
+            @RequestParam(value = "fromDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
+            @RequestParam(value = "toDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate,
+            Pageable pageable) {
+
+        BookingSearchCriteria searchCriteria = BookingSearchCriteria.builder()
+                .customerId(customerId)
+                .specialistId(specialistId)
+                .status(status)
+                .service(service)
+                .fromDate(fromDate)
+                .toDate(toDate)
+                .build();
+
+        PagedResponse<BookingResponse> bookings = bookingService.getBookingsWithPaginationAndSearch(pageable, searchCriteria);
+
+        return ResponseBuilder.ok(bookings);
     }
 }

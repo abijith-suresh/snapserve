@@ -5,7 +5,6 @@ import com.snapserve.bookingservice.dto.BookingRequest;
 import com.snapserve.bookingservice.dto.BookingResponse;
 import com.snapserve.bookingservice.model.Booking;
 import lombok.RequiredArgsConstructor;
-import org.bson.types.ObjectId;
 import org.springframework.stereotype.Component;
 
 @Component
