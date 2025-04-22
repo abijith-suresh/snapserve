@@ -2,11 +2,11 @@ package com.snapserve.reviewservice.repository;
 
 import com.snapserve.reviewservice.model.Review;
 import org.bson.types.ObjectId;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
-import java.util.List;
-
 public interface ReviewRepository extends MongoRepository<Review, ObjectId> {
-    List<Review> findBySpecialistId(String specialistId);
-    List<Review> findByCustomerId(String customerId);
+    Page<Review> findBySpecialistId(String specialistId, Pageable pageable);
+    Page<Review> findByCustomerId(String customerId, Pageable pageable);
 }

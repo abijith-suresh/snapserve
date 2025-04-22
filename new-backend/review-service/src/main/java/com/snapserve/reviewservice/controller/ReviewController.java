@@ -8,6 +8,9 @@ import com.snapserve.reviewservice.service.ReviewService;
 import com.snapserve.reviewservice.util.ResponseBuilder;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,14 +34,21 @@ public class ReviewController {
     }
 
     @GetMapping("/specialist/{specialistId}")
-    public ResponseEntity<ApiResponse<List<ReviewResponse>>> getReviewsBySpecialist(@PathVariable String specialistId) {
-        return ResponseBuilder.ok(reviewService.getReviewsBySpecialist(specialistId));
+    public ResponseEntity<ApiResponse<Page<ReviewResponse>>> getReviewsBySpecialist(
+            @PathVariable String specialistId,
+            @PageableDefault(size = 10) Pageable pageable
+    ) {
+        return ResponseBuilder.ok(reviewService.getReviewsBySpecialist(specialistId, pageable));
     }
 
     @GetMapping("/customer/{customerId}")
-    public ResponseEntity<ApiResponse<List<ReviewResponse>>> getReviewsByCustomer(@PathVariable String customerId) {
-        return ResponseBuilder.ok(reviewService.getReviewsByCustomer(customerId));
+    public ResponseEntity<ApiResponse<Page<ReviewResponse>>> getReviewsByCustomer(
+            @PathVariable String customerId,
+            @PageableDefault(size = 10) Pageable pageable
+    ) {
+        return ResponseBuilder.ok(reviewService.getReviewsByCustomer(customerId, pageable));
     }
+
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteReview(@PathVariable String id) {

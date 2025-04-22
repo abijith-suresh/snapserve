@@ -8,6 +8,8 @@ import com.snapserve.reviewservice.model.Review;
 import com.snapserve.reviewservice.repository.ReviewRepository;
 import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -36,17 +38,15 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     @Override
-    public List<ReviewResponse> getReviewsBySpecialist(String specialistId) {
-        return reviewRepository.findBySpecialistId(specialistId).stream()
-                .map(mapper::toResponse)
-                .collect(Collectors.toList());
+    public Page<ReviewResponse> getReviewsBySpecialist(String specialistId, Pageable pageable) {
+        return reviewRepository.findBySpecialistId(specialistId, pageable)
+                .map(mapper::toResponse);
     }
 
     @Override
-    public List<ReviewResponse> getReviewsByCustomer(String customerId) {
-        return reviewRepository.findByCustomerId(customerId).stream()
-                .map(mapper::toResponse)
-                .collect(Collectors.toList());
+    public Page<ReviewResponse> getReviewsByCustomer(String customerId, Pageable pageable) {
+        return reviewRepository.findByCustomerId(customerId, pageable)
+                .map(mapper::toResponse);
     }
 
     @Override
