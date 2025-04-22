@@ -1,6 +1,6 @@
 package com.snapserve.authservice.security;
 
-import lombok.RequiredArgsConstructor;
+import com.snapserve.authservice.constant.Role;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -8,11 +8,9 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
@@ -25,11 +23,11 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/auth/**").permitAll()
-                        .requestMatchers("/admin/**").hasRole(RoleConstants.ROLE_ADMIN)
+                        .requestMatchers("/admin/**").hasRole(Role.ADMIN.toString())
                         .requestMatchers("/customer/**")
-                        .hasAnyRole(RoleConstants.ROLE_CUSTOMER, RoleConstants.ROLE_ADMIN)
+                        .hasAnyRole(Role.CUSTOMER.toString(), Role.ADMIN.toString())
                         .requestMatchers("/specialist/**")
-                        .hasAnyRole(RoleConstants.ROLE_SPECIALIST, RoleConstants.ROLE_ADMIN)
+                        .hasAnyRole(Role.SPECIALIST.toString(), Role.ADMIN.toString())
                         .anyRequest()
                         .authenticated()
                 )

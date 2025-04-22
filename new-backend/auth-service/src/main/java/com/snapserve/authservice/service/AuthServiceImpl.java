@@ -1,25 +1,28 @@
 package com.snapserve.authservice.service;
 
+import com.snapserve.authservice.client.UserServiceClient;
 import com.snapserve.authservice.dto.request.LoginRequest;
 import com.snapserve.authservice.dto.request.RefreshTokenRequest;
 import com.snapserve.authservice.dto.request.RegisterRequest;
 import com.snapserve.authservice.dto.response.AuthResponse;
 import com.snapserve.authservice.exception.*;
+import com.snapserve.authservice.mapper.UserMapper;
 import com.snapserve.authservice.model.AuthUser;
 import com.snapserve.authservice.repository.AuthUserRepository;
-import com.snapserve.authservice.security.RoleConstants;
+import com.snapserve.authservice.constant.Role;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.util.Collections;
 import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
+    private final UserServiceClient userServiceClient;
+    private final UserMapper userMapper;
     private final AuthUserRepository userRepository;
     private final TokenService tokenService;
     private final PasswordEncoder passwordEncoder;
@@ -30,16 +33,17 @@ public class AuthServiceImpl implements AuthService {
             throw new UserAlreadyExistsException("Email already in use");
         }
 
-        Set<String> roles = request.getRoles();
-
-        if (roles == null || roles.isEmpty() || !roles.contains(RoleConstants.ROLE_ADMIN) && !roles.contains(RoleConstants.ROLE_CUSTOMER) && !roles.contains(RoleConstants.ROLE_SPECIALIST)) {
-            throw new InvalidRoleException("Invalid role specified");
+        switch (request.getRoles().toString()) {
+            case "ADMIN" -> userServiceClient.createAdmin(UserMapper.toAdminCreateRequest(request));
+            case "CUSTOMER" -> userServiceClient.createCustomer(UserMapper.toCustomerCreateRequest(request));
+            case "SPECIALIST" -> userServiceClient.createSpecialist(UserMapper.toSpecialistCreateRequest(request));
+            default -> throw new InvalidRoleException("Invalid role specified");
         }
 
         AuthUser user = new AuthUser();
         user.setEmail(request.getEmail());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-        user.setRoles(roles);
+        user.setRoles(request.getRoles());
         user.setEnabled(false);
 
         userRepository.save(user);
