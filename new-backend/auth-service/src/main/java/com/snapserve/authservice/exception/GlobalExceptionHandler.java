@@ -40,6 +40,12 @@ public class GlobalExceptionHandler {
         return ResponseBuilder.error(HttpStatus.BAD_REQUEST, "Token has expired");
     }
 
+    @ExceptionHandler(InvalidRoleException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse<String> handleInvalidRole(InvalidRoleException ex) {
+        return ResponseBuilder.error(HttpStatus.BAD_REQUEST, "Invalid role specified");
+    }
+
     @ExceptionHandler(RefreshTokenInvalidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiResponse<String> handleRefreshTokenInvalid(RefreshTokenInvalidException ex) {
