@@ -1,8 +1,11 @@
 package com.snapserve.authservice.service;
 
 import io.jsonwebtoken.*;
+import io.jsonwebtoken.security.Keys;
 import org.springframework.stereotype.Service;
 
+import java.security.Key;
+import java.util.Base64;
 import java.util.Date;
 
 @Service
@@ -11,6 +14,10 @@ public class TokenServiceImpl implements TokenService {
     private final String SECRET_KEY = "mySecretKey";
     private final long ACCESS_TOKEN_EXPIRATION = 1000 * 60 * 60; // 1 hour
     private final long REFRESH_TOKEN_EXPIRATION = 1000L * 60 * 60 * 24 * 30; // 30 days
+
+    private Key getSigningKey() {
+        return Keys.hmacShaKeyFor(Base64.getDecoder().decode(SECRET_KEY));
+    }
 
     @Override
     public String generateAccessToken(String email) {
@@ -25,7 +32,10 @@ public class TokenServiceImpl implements TokenService {
     @Override
     public boolean validateToken(String token) {
         try {
-            Jwts.parser().setSigningKey(SECRET_KEY).parseClaimsJws(token);
+            Jwts.parserBuilder()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(token);
             return true;
         } catch (JwtException | IllegalArgumentException e) {
             return false;
@@ -34,7 +44,11 @@ public class TokenServiceImpl implements TokenService {
 
     @Override
     public String getEmailFromToken(String token) {
-        Claims claims = Jwts.parser().setSigningKey(SECRET_KEY).parseClaimsJws(token).getBody();
+        Claims claims = Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
         return claims.getSubject();
     }
 
@@ -43,7 +57,7 @@ public class TokenServiceImpl implements TokenService {
                 .setSubject(email)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expirationTime))
-                .signWith(SignatureAlgorithm.HS512, SECRET_KEY)
+                .signWith(getSigningKey(), SignatureAlgorithm.HS512)
                 .compact();
     }
 }
