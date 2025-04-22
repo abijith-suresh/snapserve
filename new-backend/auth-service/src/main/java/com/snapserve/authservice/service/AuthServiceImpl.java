@@ -4,6 +4,7 @@ import com.snapserve.authservice.dto.request.LoginRequest;
 import com.snapserve.authservice.dto.request.RefreshTokenRequest;
 import com.snapserve.authservice.dto.request.RegisterRequest;
 import com.snapserve.authservice.dto.response.AuthResponse;
+import com.snapserve.authservice.exception.*;
 import com.snapserve.authservice.model.AuthUser;
 import com.snapserve.authservice.repository.AuthUserRepository;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +27,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void register(RegisterRequest request) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new RuntimeException("Email already in use");
+            throw new UserAlreadyExistsException("Email already in use");
         }
 
         AuthUser user = new AuthUser();
@@ -41,10 +42,10 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthResponse login(LoginRequest request) {
         AuthUser user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            throw new RuntimeException("Invalid password");
+            throw new InvalidCredentialsException("Invalid password");
         }
 
         String accessToken = tokenService.generateAccessToken(user.getEmail());
@@ -56,10 +57,10 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void verifyEmail(String token) {
         AuthUser user = userRepository.findByVerificationToken(token)
-                .orElseThrow(() -> new RuntimeException("Invalid token"));
+                .orElseThrow(() -> new InvalidTokenException("Invalid or expired token"));
 
         if (user.getTokenExpiry().isBefore(Instant.now())) {
-            throw new RuntimeException("Token expired");
+            throw new TokenExpiredException("Verification token has expired");
         }
 
         user.setEnabled(true);

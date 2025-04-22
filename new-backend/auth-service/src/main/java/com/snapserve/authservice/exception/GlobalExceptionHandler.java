@@ -10,6 +10,42 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    @ExceptionHandler(UserAlreadyExistsException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse<String> handleUserAlreadyExists(UserAlreadyExistsException ex) {
+        return ResponseBuilder.error(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidTokenException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse<String> handleInvalidToken(InvalidTokenException ex) {
+        return ResponseBuilder.error(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(UserNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ApiResponse<String> handleUserNotFound(UserNotFoundException ex) {
+        return ResponseBuilder.error(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidCredentialsException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ApiResponse<String> handleInvalidCredentials(InvalidCredentialsException ex) {
+        return ResponseBuilder.error(HttpStatus.UNAUTHORIZED, "Invalid credentials");
+    }
+
+    @ExceptionHandler(TokenExpiredException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse<String> handleTokenExpired(TokenExpiredException ex) {
+        return ResponseBuilder.error(HttpStatus.BAD_REQUEST, "Token has expired");
+    }
+
+    @ExceptionHandler(RefreshTokenInvalidException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse<String> handleRefreshTokenInvalid(RefreshTokenInvalidException ex) {
+        return ResponseBuilder.error(HttpStatus.BAD_REQUEST, "Invalid refresh token");
+    }
+
     @ExceptionHandler(ResourceNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ApiResponse<String> handleNotFound(ResourceNotFoundException ex) {
