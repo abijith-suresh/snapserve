@@ -4,6 +4,7 @@ import com.snapserve.notificationservice.dto.request.NotificationRequest;
 import com.snapserve.notificationservice.exception.TemplateNotFoundException;
 import com.snapserve.notificationservice.model.NotificationLog;
 import com.snapserve.notificationservice.model.NotificationStatus;
+import com.snapserve.notificationservice.model.NotificationType;
 import com.snapserve.notificationservice.repository.NotificationLogRepository;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
@@ -28,6 +29,11 @@ public class EmailNotificationService implements NotificationService {
 
     @Value("${spring.mail.from:no-reply@example.com}")
     private String from;
+
+    @Override
+    public NotificationType getNotificationType() {
+        return NotificationType.EMAIL;
+    }
 
     @Override
     public boolean sendNotification(NotificationRequest request) {
