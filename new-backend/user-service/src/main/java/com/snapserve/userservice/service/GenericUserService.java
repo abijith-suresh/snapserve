@@ -1,6 +1,6 @@
 package com.snapserve.userservice.service;
 
-import com.snapserve.userservice.dto.PagedResponse;
+import com.snapserve.userservice.dto.response.PagedResponse;
 import org.springframework.data.domain.Pageable;
 
 public interface GenericUserService<ENTITY, REQUEST, RESPONSE> {

@@ -1,7 +1,7 @@
 package com.snapserve.userservice.mapper;
 
-import com.snapserve.userservice.dto.SpecialistRequest;
-import com.snapserve.userservice.dto.SpecialistResponse;
+import com.snapserve.userservice.dto.request.SpecialistRequest;
+import com.snapserve.userservice.dto.response.SpecialistResponse;
 import com.snapserve.userservice.model.Specialist;
 
 public class SpecialistMapper {

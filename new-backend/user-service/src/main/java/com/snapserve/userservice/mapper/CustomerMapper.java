@@ -1,7 +1,7 @@
 package com.snapserve.userservice.mapper;
 
-import com.snapserve.userservice.dto.CustomerRequest;
-import com.snapserve.userservice.dto.CustomerResponse;
+import com.snapserve.userservice.dto.request.CustomerRequest;
+import com.snapserve.userservice.dto.response.CustomerResponse;
 import com.snapserve.userservice.model.Customer;
 
 public class CustomerMapper {

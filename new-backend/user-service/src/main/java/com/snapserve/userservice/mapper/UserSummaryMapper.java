@@ -1,6 +1,6 @@
 package com.snapserve.userservice.mapper;
 
-import com.snapserve.userservice.dto.UserSummaryResponse;
+import com.snapserve.userservice.dto.response.UserSummaryResponse;
 import com.snapserve.userservice.model.Customer;
 import com.snapserve.userservice.model.Specialist;
 

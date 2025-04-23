@@ -1,4 +1,4 @@
-package com.snapserve.userservice.dto;
+package com.snapserve.userservice.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -11,7 +11,7 @@ import java.time.LocalDate;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class CustomerResponse {
+public class AdminResponse {
     private String id;
     private String fullName;
     private String email;
@@ -20,4 +20,6 @@ public class CustomerResponse {
     private byte[] profilePic;
     private LocalDate dob;
     private String gender;
+
+    private String roleDescription;
 }

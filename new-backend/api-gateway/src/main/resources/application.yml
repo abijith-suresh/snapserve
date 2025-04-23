@@ -11,6 +11,13 @@ spring:
         locator:
           enabled: true
           lowerCaseServiceId: true
+      default-filters:
+        - StripPrefix=1
+      routes:
+        - id: auth-service
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/auth/**
 
   config:
     import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
@@ -38,3 +45,7 @@ logging:
   level:
     root: INFO
     org.springframework.cloud.gateway: DEBUG
+
+security:
+  jwt:
+    secret: ${SECURITY_JWT_SECRET:default-fallback-secret-with-at-least-32-chars-!!}

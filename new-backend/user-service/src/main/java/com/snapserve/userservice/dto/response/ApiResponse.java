@@ -1,4 +1,4 @@
-package com.snapserve.userservice.dto;
+package com.snapserve.userservice.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

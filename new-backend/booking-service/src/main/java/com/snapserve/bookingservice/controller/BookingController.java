@@ -32,11 +32,6 @@ public class BookingController {
         return ResponseBuilder.ok(bookingService.getBookingById(id), "Booking fetched successfully");
     }
 
-    @GetMapping
-    public ResponseEntity<ApiResponse<List<BookingResponse>>> getAllBookings() {
-        return ResponseBuilder.ok(bookingService.getAllBookings(), "All bookings fetched successfully");
-    }
-
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<BookingResponse>> updateBooking(@PathVariable String id, @Valid @RequestBody BookingRequest request) {
         return ResponseBuilder.ok(bookingService.updateBooking(id, request), "Booking updated successfully");

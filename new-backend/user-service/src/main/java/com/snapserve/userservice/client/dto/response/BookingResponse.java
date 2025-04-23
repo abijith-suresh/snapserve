@@ -1,4 +1,4 @@
-package com.snapserve.userservice.dto.booking;
+package com.snapserve.userservice.client.dto.response;
 
 import com.snapserve.userservice.enums.BookingStatus;
 import lombok.Builder;

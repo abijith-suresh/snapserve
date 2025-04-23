@@ -1,22 +1,18 @@
 package com.snapserve.userservice.controller;
 
-import com.snapserve.userservice.dto.UserDetailResponse;
-import com.snapserve.userservice.dto.UserSummaryResponse;
-import com.snapserve.userservice.dto.ApiResponse;
-import com.snapserve.userservice.dto.PagedResponse;
-import com.snapserve.userservice.dto.booking.BookingResponse;
-import com.snapserve.userservice.dto.booking.BookingSearchCriteria;
-import com.snapserve.userservice.enums.BookingStatus;
+import com.snapserve.userservice.dto.response.UserDetailResponse;
+import com.snapserve.userservice.dto.response.UserSummaryResponse;
+import com.snapserve.userservice.dto.response.ApiResponse;
+import com.snapserve.userservice.dto.response.PagedResponse;
+import com.snapserve.userservice.client.dto.response.BookingResponse;
+import com.snapserve.userservice.client.dto.response.BookingSearchCriteria;
 import com.snapserve.userservice.service.UserManagementService;
 import com.snapserve.userservice.util.ResponseBuilder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
-
-import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/admin")

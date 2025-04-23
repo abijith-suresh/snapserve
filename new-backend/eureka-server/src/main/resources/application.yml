@@ -35,8 +35,4 @@ management:
         include: "*"
   endpoint:
     health:
-      group:
-        readiness:
-          include: readinessState, db, diskSpace
-        liveness:
-          include: livenessState
+      show-details: ALWAYS

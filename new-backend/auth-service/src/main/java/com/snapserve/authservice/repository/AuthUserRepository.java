@@ -7,5 +7,4 @@ import java.util.Optional;
 
 public interface AuthUserRepository extends MongoRepository<AuthUser,String> {
     Optional<AuthUser> findByEmail(String email);
-    Optional<AuthUser> findByVerificationToken(String token);
 }

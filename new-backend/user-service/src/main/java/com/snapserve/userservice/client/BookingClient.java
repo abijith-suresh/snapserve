@@ -1,7 +1,7 @@
 package com.snapserve.userservice.client;
 
-import com.snapserve.userservice.dto.PagedResponse;
-import com.snapserve.userservice.dto.booking.BookingResponse;
+import com.snapserve.userservice.dto.response.PagedResponse;
+import com.snapserve.userservice.client.dto.response.BookingResponse;
 import com.snapserve.userservice.enums.BookingStatus;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.time.LocalDateTime;
 
-@FeignClient(name = "booking-service", url = "${booking.service.url}")
+@FeignClient(name = "booking-service")
 public interface BookingClient {
 
     @GetMapping("/bookings")

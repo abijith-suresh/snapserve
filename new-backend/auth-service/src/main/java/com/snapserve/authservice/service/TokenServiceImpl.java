@@ -2,8 +2,12 @@ package com.snapserve.authservice.service;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Base64;
 import java.util.Date;
@@ -11,13 +15,18 @@ import java.util.Date;
 @Service
 public class TokenServiceImpl implements TokenService {
 
-    private final String SECRET_KEY = "mySecretKey";
+    @Value("${jwt.secret}")
+    private String secret;
+
+    private SecretKey secretKey;
+
+    @PostConstruct
+    public void init() {
+        secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+    }
+
     private final long ACCESS_TOKEN_EXPIRATION = 1000 * 60 * 60; // 1 hour
     private final long REFRESH_TOKEN_EXPIRATION = 1000L * 60 * 60 * 24 * 30; // 30 days
-
-    private Key getSigningKey() {
-        return Keys.hmacShaKeyFor(Base64.getDecoder().decode(SECRET_KEY));
-    }
 
     @Override
     public String generateAccessToken(String email) {
@@ -33,7 +42,7 @@ public class TokenServiceImpl implements TokenService {
     public boolean validateToken(String token) {
         try {
             Jwts.parserBuilder()
-                    .setSigningKey(getSigningKey())
+                    .setSigningKey(secretKey)
                     .build()
                     .parseClaimsJws(token);
             return true;
@@ -45,7 +54,7 @@ public class TokenServiceImpl implements TokenService {
     @Override
     public String getEmailFromToken(String token) {
         Claims claims = Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())
+                .setSigningKey(secretKey)
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
@@ -57,7 +66,7 @@ public class TokenServiceImpl implements TokenService {
                 .setSubject(email)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expirationTime))
-                .signWith(getSigningKey(), SignatureAlgorithm.HS512)
+                .signWith(secretKey, SignatureAlgorithm.HS512)
                 .compact();
     }
 }

@@ -10,7 +10,7 @@ spring:
       uri: ${MONGODB_URI:mongodb://localhost:27017/snapserve}
 
 server:
-  port: ${SERVER_PORT:8081}
+  port: ${SERVER_PORT:8082}
 
 management:
   endpoints:

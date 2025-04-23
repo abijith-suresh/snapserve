@@ -1,7 +1,6 @@
 package com.snapserve.apigateway.security;
 
 import io.jsonwebtoken.Claims;
-import lombok.RequiredArgsConstructor;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
 import org.springframework.core.Ordered;
@@ -12,7 +11,6 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 @Component
-@RequiredArgsConstructor
 public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAuthenticationFilter.Config> implements Ordered {
 
     private final JwtService jwtService;
@@ -21,11 +19,18 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAut
     public static class Config {
     }
 
+    public JwtAuthenticationFilter(JwtService jwtService, RouteValidator routeValidator) {
+        super(Config.class);
+        this.jwtService = jwtService;
+        this.routeValidator = routeValidator;
+    }
+
     @Override
     public GatewayFilter apply(Config config) {
         return (exchange, chain) -> {
             String path = exchange.getRequest().getPath().toString();
             if (!routeValidator.isSecured.test(path)) {
+                System.out.println("Open endpoint, proceeding without JWT validation: " + path);
                 return chain.filter(exchange);
             }
 

@@ -1,8 +1,8 @@
 package com.snapserve.userservice.service;
 
-import com.snapserve.userservice.dto.CustomerRequest;
-import com.snapserve.userservice.dto.CustomerResponse;
-import com.snapserve.userservice.dto.PagedResponse;
+import com.snapserve.userservice.dto.request.CustomerRequest;
+import com.snapserve.userservice.dto.response.CustomerResponse;
+import com.snapserve.userservice.dto.response.PagedResponse;
 import com.snapserve.userservice.exception.ResourceNotFoundException;
 import com.snapserve.userservice.mapper.CustomerMapper;
 import com.snapserve.userservice.model.Customer;
@@ -14,7 +14,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor

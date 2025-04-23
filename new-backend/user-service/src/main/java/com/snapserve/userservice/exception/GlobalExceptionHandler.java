@@ -1,6 +1,6 @@
 package com.snapserve.userservice.exception;
 
-import com.snapserve.userservice.dto.ApiResponse;
+import com.snapserve.userservice.dto.response.ApiResponse;
 import com.snapserve.userservice.util.ResponseBuilder;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ExceptionHandler;

@@ -1,7 +1,7 @@
 package com.snapserve.userservice.mapper;
 
-import com.snapserve.userservice.dto.AdminRequest;
-import com.snapserve.userservice.dto.AdminResponse;
+import com.snapserve.userservice.dto.request.AdminRequest;
+import com.snapserve.userservice.dto.response.AdminResponse;
 import com.snapserve.userservice.model.Admin;
 
 public class AdminMapper {

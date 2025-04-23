@@ -1,8 +1,8 @@
 package com.snapserve.userservice.service;
 
-import com.snapserve.userservice.dto.AdminRequest;
-import com.snapserve.userservice.dto.AdminResponse;
-import com.snapserve.userservice.dto.PagedResponse;
+import com.snapserve.userservice.dto.request.AdminRequest;
+import com.snapserve.userservice.dto.response.AdminResponse;
+import com.snapserve.userservice.dto.response.PagedResponse;
 import com.snapserve.userservice.exception.ResourceNotFoundException;
 import com.snapserve.userservice.mapper.AdminMapper;
 import com.snapserve.userservice.model.Admin;
@@ -14,7 +14,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor

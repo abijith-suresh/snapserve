@@ -12,9 +12,7 @@ import org.bson.types.ObjectId;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -35,13 +33,6 @@ public class BookingServiceImpl implements BookingService {
         Booking booking = bookingRepository.findById(new ObjectId(id))
                 .orElseThrow(() -> new NoSuchElementException("Booking not found"));
         return mapper.toResponse(booking);
-    }
-
-    @Override
-    public List<BookingResponse> getAllBookings() {
-        return bookingRepository.findAll().stream()
-                .map(mapper::toResponse)
-                .collect(Collectors.toList());
     }
 
     @Override

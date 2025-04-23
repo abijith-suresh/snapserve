@@ -2,23 +2,27 @@ package com.snapserve.notificationservice.service;
 
 import com.snapserve.notificationservice.dto.request.NotificationRequest;
 import com.snapserve.notificationservice.model.NotificationType;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class NotificationManager {
 
-    private final Map<NotificationType, NotificationService> notificationServiceMap;
+    private final Map<String, NotificationService> notificationServiceBeans;
+    private final Map<NotificationType, NotificationService> notificationServiceMap = new HashMap<>();
 
-    public NotificationManager(List<NotificationService> services) {
-        this.notificationServiceMap = services.stream()
-                .collect(Collectors.toMap(NotificationService::getNotificationType, service -> service));
+    @PostConstruct
+    public void init() {
+        for (NotificationService service : notificationServiceBeans.values()) {
+            notificationServiceMap.put(service.getNotificationType(), service);
+        }
     }
+
 
     public boolean sendNotification(NotificationRequest request) {
         NotificationService service = notificationServiceMap.get(request.getType());

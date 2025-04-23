@@ -1,6 +1,6 @@
 package com.snapserve.userservice.util;
 
-import com.snapserve.userservice.dto.ApiResponse;
+import com.snapserve.userservice.dto.response.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 

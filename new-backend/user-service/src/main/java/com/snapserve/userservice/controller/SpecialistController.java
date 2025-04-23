@@ -1,9 +1,9 @@
 package com.snapserve.userservice.controller;
 
-import com.snapserve.userservice.dto.ApiResponse;
-import com.snapserve.userservice.dto.PagedResponse;
-import com.snapserve.userservice.dto.SpecialistRequest;
-import com.snapserve.userservice.dto.SpecialistResponse;
+import com.snapserve.userservice.dto.response.ApiResponse;
+import com.snapserve.userservice.dto.response.PagedResponse;
+import com.snapserve.userservice.dto.request.SpecialistRequest;
+import com.snapserve.userservice.dto.response.SpecialistResponse;
 import com.snapserve.userservice.model.Specialist;
 import com.snapserve.userservice.service.GenericUserService;
 import com.snapserve.userservice.util.ResponseBuilder;

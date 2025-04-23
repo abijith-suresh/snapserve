@@ -2,7 +2,7 @@ server:
   port: ${SERVER_PORT:8081}
 
 jwt:
-  secret: ${JWT_SECRET:default-fallback-secret}
+  secret: ${JWT_SECRET:default-fallback-secret-with-at-least-32-chars-!!}
 
 auth:
   login:

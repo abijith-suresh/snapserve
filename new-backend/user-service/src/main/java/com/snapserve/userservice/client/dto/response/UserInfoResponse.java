@@ -1,4 +1,4 @@
-package com.snapserve.userservice.dto;
+package com.snapserve.userservice.client.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,11 +9,10 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserSummaryResponse {
+public class UserInfoResponse {
     private String id;
     private String name;
     private String email;
-    private String phoneNumber;
-    private String role;
-    private byte[] profilePic;
+    private String phone;
+    private String profilePic;
 }
