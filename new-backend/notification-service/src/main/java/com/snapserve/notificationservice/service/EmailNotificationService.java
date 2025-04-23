@@ -25,7 +25,7 @@ public class EmailNotificationService implements NotificationService {
 
     private final JavaMailSender mailSender;
     private final NotificationLogRepository logRepository;
-    private final TemplateEngine templateEngine;
+    private final TemplateService templateService;
 
     @Value("${spring.mail.from:no-reply@example.com}")
     private String from;
@@ -40,8 +40,8 @@ public class EmailNotificationService implements NotificationService {
         NotificationLog log = createLogFromRequest(request);
 
         try {
-            String htmlContent = generateHtmlFromTemplate(request);
-            sendEmail(request, htmlContent);
+            String htmlContent = templateService.loadTemplate(request.getTemplateName(), request.getVariables());
+            sendEmail(request.getTo(), request.getSubject(), htmlContent);
             log.setStatus(NotificationStatus.SENT);
         } catch (TemplateNotFoundException | MessagingException | MailException e) {
             log.setStatus(NotificationStatus.FAILED);
@@ -53,34 +53,23 @@ public class EmailNotificationService implements NotificationService {
     }
 
     private NotificationLog createLogFromRequest(NotificationRequest request) {
-        NotificationLog log = new NotificationLog();
-        log.setType(request.getType());
-        log.setTo(request.getTo());
-        log.setSubject(request.getSubject());
-        log.setTemplateName(request.getTemplateName());
-        log.setVariables(request.getVariables());
-        log.setSentAt(LocalDateTime.now());
-        return log;
+        return NotificationLog.builder()
+                .type(request.getType())
+                .to(request.getTo())
+                .subject(request.getSubject())
+                .templateName(request.getTemplateName())
+                .variables(request.getVariables())
+                .sentAt(LocalDateTime.now())
+                .build();
     }
 
-    private String generateHtmlFromTemplate(NotificationRequest request) {
-        try {
-            Context context = new Context();
-            context.setVariables(request.getVariables());
-            String templatePath = "emails/" + request.getTemplateName();
-            return templateEngine.process(templatePath, context);
-        } catch (Exception e) {
-            throw new TemplateNotFoundException(request.getTemplateName());
-        }
-    }
-
-    private void sendEmail(NotificationRequest request, String htmlContent) throws MessagingException {
+    private void sendEmail(String to, String subject, String htmlContent) throws MessagingException {
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true);
 
         helper.setFrom(from);
-        helper.setTo(request.getTo());
-        helper.setSubject(request.getSubject());
+        helper.setTo(to);
+        helper.setSubject(subject);
         helper.setText(htmlContent, true);
 
         mailSender.send(message);
