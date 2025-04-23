@@ -1,5 +1,6 @@
 package com.snapserve.notificationservice.service;
 
+import com.snapserve.notificationservice.exception.TemplateInactiveException;
 import com.snapserve.notificationservice.exception.TemplateLoadException;
 import com.snapserve.notificationservice.exception.TemplateNotFoundException;
 import com.snapserve.notificationservice.model.NotificationTemplate;
@@ -21,6 +22,18 @@ public class TemplateService {
 
     private final NotificationTemplateRepository templateRepository;
     private final TemplateEngine templateEngine;
+
+    public NotificationTemplate findActiveTemplateByName(String templateName) {
+        NotificationTemplate template = templateRepository.findByName(templateName)
+                .orElseThrow(() -> new TemplateNotFoundException("Template not found: " + templateName));
+
+        if (!template.isActive()) {
+            throw new TemplateInactiveException("Template '" + templateName + "' is currently disabled");
+        }
+
+        return template;
+    }
+
 
     public String loadTemplate(String templateName, Map<String, Object> variables) {
         Optional<NotificationTemplate> dbTemplate = templateRepository.findByName(templateName);
