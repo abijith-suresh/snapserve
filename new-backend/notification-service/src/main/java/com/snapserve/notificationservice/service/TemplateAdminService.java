@@ -58,4 +58,19 @@ public class TemplateAdminService {
         }
         templateRepository.deleteById(id);
     }
+
+    public void enableTemplate(String id) {
+        NotificationTemplate template = templateRepository.findById(id)
+                .orElseThrow(() -> new TemplateNotFoundException("Template not found: " + id));
+        template.setActive(true);
+        templateRepository.save(template);
+    }
+
+    public void disableTemplate(String id) {
+        NotificationTemplate template = templateRepository.findById(id)
+                .orElseThrow(() -> new TemplateNotFoundException("Template not found: " + id));
+        template.setActive(false);
+        templateRepository.save(template);
+    }
+
 }

@@ -45,5 +45,16 @@ public class TemplateAdminController {
         templateAdminService.deleteTemplate(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<Void> changeTemplateStatus(@PathVariable String id, @RequestParam boolean active) {
+        if (active) {
+            templateAdminService.enableTemplate(id);
+        } else {
+            templateAdminService.disableTemplate(id);
+        }
+        return ResponseEntity.noContent().build();
+    }
+
 }
 
