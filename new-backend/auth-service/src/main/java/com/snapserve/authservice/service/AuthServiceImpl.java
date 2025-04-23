@@ -9,20 +9,17 @@ import com.snapserve.authservice.exception.*;
 import com.snapserve.authservice.mapper.UserMapper;
 import com.snapserve.authservice.model.AuthUser;
 import com.snapserve.authservice.repository.AuthUserRepository;
-import com.snapserve.authservice.constant.Role;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
     private final UserServiceClient userServiceClient;
-    private final UserMapper userMapper;
     private final AuthUserRepository userRepository;
     private final TokenService tokenService;
     private final PasswordEncoder passwordEncoder;
@@ -33,7 +30,7 @@ public class AuthServiceImpl implements AuthService {
             throw new UserAlreadyExistsException("Email already in use");
         }
 
-        switch (request.getRoles().toString()) {
+        switch (request.getRole()) {
             case "ADMIN" -> userServiceClient.createAdmin(UserMapper.toAdminCreateRequest(request));
             case "CUSTOMER" -> userServiceClient.createCustomer(UserMapper.toCustomerCreateRequest(request));
             case "SPECIALIST" -> userServiceClient.createSpecialist(UserMapper.toSpecialistCreateRequest(request));
@@ -43,7 +40,7 @@ public class AuthServiceImpl implements AuthService {
         AuthUser user = new AuthUser();
         user.setEmail(request.getEmail());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-        user.setRoles(request.getRoles());
+        user.setRole(request.getRole());
         user.setEnabled(false);
 
         userRepository.save(user);

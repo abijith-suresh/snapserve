@@ -18,7 +18,7 @@ public class AuthUser {
     private String id;
     private String email;
     private String passwordHash;
-    private Set<String> roles;
+    private String role;
     private boolean enabled;
     private String verificationToken;
     private Instant tokenExpiry;
