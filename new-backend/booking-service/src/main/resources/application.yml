@@ -1,11 +1,12 @@
+server:
+  port: ${SERVER_PORT:8082}
+
 spring:
   application:
     name: booking-service
-  config:
-    import: "optional:configserver:http://localhost:8888"
 
-server:
-  port: 8082
+  config:
+    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
 
 management:
   endpoints:
@@ -16,15 +17,15 @@ management:
     health:
       show-details: ALWAYS
 
-#eureka:
-#  client:
-#    service-url:
-#      defaultZone: http://localhost:8761/eureka
-#    register-with-eureka: true
-#    fetch-registry: true
-#  instance:
-#    instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
-#    prefer-ip-address: true
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka}
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}
+    prefer-ip-address: true
 
 feign:
   client:

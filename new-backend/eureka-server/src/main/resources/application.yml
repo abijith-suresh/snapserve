@@ -1,19 +1,19 @@
 server:
-  port: 8761
+  port: ${SERVER_PORT:8761}
 
 spring:
   application:
     name: eureka-server
 
   config:
-    import: optional:configserver:http://localhost:8888
+    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
 
   boot:
     admin:
       client:
-        url: http://localhost:9090
+        url: ${ADMIN_SERVER_URL:http://localhost:9090}
         instance:
-          name: EUREKA-SERVER
+          name: ${BOOT_ADMIN_INSTANCE_NAME:EUREKA-SERVER}
           prefer-ip: true
         auto-registration: true
         register-once: false
