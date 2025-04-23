@@ -7,18 +7,20 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
-import java.util.Set;
 
-@Document(collection="users")
+@Document(collection = "verification_tokens")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class AuthUser {
+public class VerificationToken {
+
     @Id
     private String id;
-    private String email;
-    private String passwordHash;
-    private String role;
-    private boolean enabled;
-    private String refreshToken;
+
+    private String token;
+
+    private String userId;
+
+    private Instant expiryDate;
+
 }

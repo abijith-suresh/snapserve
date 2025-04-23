@@ -8,12 +8,16 @@ import com.snapserve.authservice.dto.response.AuthResponse;
 import com.snapserve.authservice.exception.*;
 import com.snapserve.authservice.mapper.UserMapper;
 import com.snapserve.authservice.model.AuthUser;
+import com.snapserve.authservice.model.VerificationToken;
 import com.snapserve.authservice.repository.AuthUserRepository;
+import com.snapserve.authservice.repository.VerificationTokenRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.Instant;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +27,7 @@ public class AuthServiceImpl implements AuthService {
     private final AuthUserRepository userRepository;
     private final TokenService tokenService;
     private final PasswordEncoder passwordEncoder;
+    private final VerificationTokenRepository verificationTokenRepository;
 
     @Override
     public void register(RegisterRequest request) {
@@ -43,7 +48,18 @@ public class AuthServiceImpl implements AuthService {
         user.setRole(request.getRole());
         user.setEnabled(false);
 
-        userRepository.save(user);
+        AuthUser savedUser = userRepository.save(user);
+
+        String token = UUID.randomUUID().toString();
+        Instant expiry = Instant.now().plus(Duration.ofHours(24));
+
+        VerificationToken verificationToken = new VerificationToken(
+                null,
+                token,
+                savedUser.getId(),
+                expiry
+        );
+        verificationTokenRepository.save(verificationToken);
     }
 
     @Override
@@ -63,15 +79,20 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void verifyEmail(String token) {
-        AuthUser user = userRepository.findByVerificationToken(token)
+        VerificationToken verificationToken = verificationTokenRepository.findByToken(token)
                 .orElseThrow(() -> new InvalidTokenException("Invalid or expired token"));
 
-        if (user.getTokenExpiry().isBefore(Instant.now())) {
+        if (verificationToken.getExpiryDate().isBefore(Instant.now())) {
             throw new TokenExpiredException("Verification token has expired");
         }
 
+        AuthUser user = userRepository.findById(verificationToken.getUserId())
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
         user.setEnabled(true);
         userRepository.save(user);
+
+        verificationTokenRepository.delete(verificationToken);
     }
 
     @Override
