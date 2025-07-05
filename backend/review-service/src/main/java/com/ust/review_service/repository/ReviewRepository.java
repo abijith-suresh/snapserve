@@ -8,6 +8,7 @@ import reactor.core.publisher.Flux;
 
 @Repository
 public interface ReviewRepository extends ReactiveMongoRepository<Review, ObjectId> {
-    Flux<Review> findByCustomerId(ObjectId customerId);
-    Flux<Review> findBySpecialistId(ObjectId specialistId);
+  Flux<Review> findByCustomerId(ObjectId customerId);
+
+  Flux<Review> findBySpecialistId(ObjectId specialistId);
 }

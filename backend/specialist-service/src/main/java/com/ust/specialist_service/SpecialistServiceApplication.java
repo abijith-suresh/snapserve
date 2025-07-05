@@ -6,8 +6,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class SpecialistServiceApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(SpecialistServiceApplication.class, args);
-	}
-
+  public static void main(String[] args) {
+    SpringApplication.run(SpecialistServiceApplication.class, args);
+  }
 }

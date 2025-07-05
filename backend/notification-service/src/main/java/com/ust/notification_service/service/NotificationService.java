@@ -12,29 +12,45 @@ import org.thymeleaf.context.Context;
 @Service
 public class NotificationService {
 
-  @Autowired
-  private JavaMailSender javaMailSender;
+  @Autowired private JavaMailSender javaMailSender;
 
-  @Autowired
-  private TemplateEngine templateEngine;
+  @Autowired private TemplateEngine templateEngine;
 
   // Send Registration Success Email
   public void sendRegistrationSuccessEmail(String to, String name) throws MessagingException {
-    sendEmail(to, "Registration Success", name, "Congratulations! Your registration with SnapServe was successful.", "registration-success");
+    sendEmail(
+        to,
+        "Registration Success",
+        name,
+        "Congratulations! Your registration with SnapServe was successful.",
+        "registration-success");
   }
 
   // Send Booking Created Email
-  public void sendBookingCreatedEmail(String to, String name, String appointmentTime) throws MessagingException {
-    sendEmail(to, "Booking Created", name, "Your booking for the service is successfully created. Your appointment is scheduled for: " + appointmentTime, "booking-created");
+  public void sendBookingCreatedEmail(String to, String name, String appointmentTime)
+      throws MessagingException {
+    sendEmail(
+        to,
+        "Booking Created",
+        name,
+        "Your booking for the service is successfully created. Your appointment is scheduled for: "
+            + appointmentTime,
+        "booking-created");
   }
 
   // Send Booking Completed Email
   public void sendBookingCompletedEmail(String to, String name) throws MessagingException {
-    sendEmail(to, "Booking Completed", name, "Your booking has been completed successfully. Thank you for using SnapServe!", "booking-completed");
+    sendEmail(
+        to,
+        "Booking Completed",
+        name,
+        "Your booking has been completed successfully. Thank you for using SnapServe!",
+        "booking-completed");
   }
 
   // Send Booking Status Update Email (Generic for Cancelled, Approved, etc.)
-  public void sendBookingStatusEmail(String to, String name, String status) throws MessagingException {
+  public void sendBookingStatusEmail(String to, String name, String status)
+      throws MessagingException {
     String subject = "Booking Status Updated";
     String message = "";
 
@@ -58,7 +74,9 @@ public class NotificationService {
   }
 
   // Generic Email Sending Method
-  private void sendEmail(String to, String subject, String name, String message, String templateName) throws MessagingException {
+  private void sendEmail(
+      String to, String subject, String name, String message, String templateName)
+      throws MessagingException {
     Context context = new Context();
     context.setVariable("name", name);
     context.setVariable("message", message);

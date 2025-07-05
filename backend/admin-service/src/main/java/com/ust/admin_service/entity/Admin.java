@@ -12,10 +12,9 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @NoArgsConstructor
 @Document(collection = "admin")
 public class Admin {
-    @Id
-    private ObjectId id;
+  @Id private ObjectId id;
 
-    private String firstName;
-    private String lastName;
-    private String email;
+  private String firstName;
+  private String lastName;
+  private String email;
 }

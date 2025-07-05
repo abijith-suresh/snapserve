@@ -7,7 +7,5 @@ import reactor.core.publisher.Mono;
 
 public interface ComplaintRepository extends ReactiveMongoRepository<Complaint, ObjectId> {
 
-    public Mono<Complaint> findById(String complaintId);
-
-
+  public Mono<Complaint> findById(String complaintId);
 }

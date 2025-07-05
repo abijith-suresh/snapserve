@@ -9,8 +9,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/notifications")
 public class NotificationController {
 
-  @Autowired
-  private NotificationService notificationService;
+  @Autowired private NotificationService notificationService;
 
   // Endpoint for Registration Success Email
   @PostMapping("/send-registration-success")
@@ -25,7 +24,8 @@ public class NotificationController {
 
   // Endpoint for Booking Created Email
   @PostMapping("/send-booking-created")
-  public String sendBookingCreatedEmail(@RequestParam String to, @RequestParam String name, @RequestParam String appointmentTime) {
+  public String sendBookingCreatedEmail(
+      @RequestParam String to, @RequestParam String name, @RequestParam String appointmentTime) {
     try {
       notificationService.sendBookingCreatedEmail(to, name, appointmentTime);
       return "Booking created email sent successfully!";
@@ -36,7 +36,8 @@ public class NotificationController {
 
   // Send Booking Status Update Email
   @PostMapping("/send-booking-status")
-  public String sendBookingStatusEmail(@RequestParam String to, @RequestParam String name, @RequestParam String status) {
+  public String sendBookingStatusEmail(
+      @RequestParam String to, @RequestParam String name, @RequestParam String status) {
     try {
       notificationService.sendBookingStatusEmail(to, name, status);
       return "Booking status email sent successfully!";
