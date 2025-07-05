@@ -8,5 +8,5 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class EmailUpdateDto {
-    private  String email;
+  private String email;
 }

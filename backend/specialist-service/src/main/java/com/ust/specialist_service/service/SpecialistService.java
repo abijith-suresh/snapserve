@@ -1,7 +1,7 @@
 package com.ust.specialist_service.service;
 
-import com.ust.specialist_service.dto.EmailUpdateDto;
 import com.ust.specialist_service.dto.AddSpecialistDto;
+import com.ust.specialist_service.dto.EmailUpdateDto;
 import com.ust.specialist_service.dto.SpecialistDto;
 import com.ust.specialist_service.entity.Specialist;
 import com.ust.specialist_service.repo.SpecialistRepo;
@@ -15,11 +15,9 @@ import reactor.core.publisher.Mono;
 @Service
 public class SpecialistService {
 
-  @Autowired
-  private SpecialistRepo specialistRepo;
+  @Autowired private SpecialistRepo specialistRepo;
 
-  @Autowired
-  private WebClient.Builder webClientBuilder;
+  @Autowired private WebClient.Builder webClientBuilder;
 
   private void dtoToModel(Specialist specialist, AddSpecialistDto addSpecialistDto) {
     specialist.setName(addSpecialistDto.getName());
@@ -71,29 +69,30 @@ public class SpecialistService {
         specialist.getServices(),
         specialist.getPhotos(),
         specialist.getExperience(),
-            specialist.getAddress(),
-    specialist.getStatus());
+        specialist.getAddress(),
+        specialist.getStatus());
   }
 
   public Mono<Specialist> createSpecialist(AddSpecialistDto addSpecialistDto) {
     Specialist specialist = new Specialist();
     dtoToModel(specialist, addSpecialistDto);
 
-    return specialistRepo.save(specialist)
-            .flatMap(savedSpecialist -> {
-              return sendRegistrationSuccessEmail(savedSpecialist.getEmail(), savedSpecialist.getName())
-                      .then(Mono.just(savedSpecialist));
+    return specialistRepo
+        .save(specialist)
+        .flatMap(
+            savedSpecialist -> {
+              return sendRegistrationSuccessEmail(
+                      savedSpecialist.getEmail(), savedSpecialist.getName())
+                  .then(Mono.just(savedSpecialist));
             });
   }
 
   public Flux<SpecialistDto> getAllSpecialists() {
-    return specialistRepo.findAll()
-        .map(this::convertToDto);
+    return specialistRepo.findAll().map(this::convertToDto);
   }
 
   public Mono<SpecialistDto> getSpecialistById(ObjectId id) {
-    return specialistRepo.findById(id)
-        .map(this::convertToDto);
+    return specialistRepo.findById(id).map(this::convertToDto);
   }
 
   public Mono<Specialist> updateSpecialist(ObjectId id, Specialist specialistDetails) {
@@ -106,26 +105,28 @@ public class SpecialistService {
   }
 
   public Mono<SpecialistDto> findByEmail(String email) {
-    return specialistRepo.findByEmail(email)
-            .map(this::convertToDto);
+    return specialistRepo.findByEmail(email).map(this::convertToDto);
   }
 
   public Mono<Specialist> updateSpecialistByEmail(ObjectId id, EmailUpdateDto newEmail) {
-    return specialistRepo.findById(id)
-        .flatMap(existingSpecialist -> {
-          // Update the specialist email
-          existingSpecialist.setEmail(newEmail.getEmail());
-          return specialistRepo.save(existingSpecialist);
-        });
-
+    return specialistRepo
+        .findById(id)
+        .flatMap(
+            existingSpecialist -> {
+              // Update the specialist email
+              existingSpecialist.setEmail(newEmail.getEmail());
+              return specialistRepo.save(existingSpecialist);
+            });
   }
 
   public Mono<Void> updateSpecialistStatus(ObjectId id, String status) {
-    return specialistRepo.findById(id)
-        .flatMap(specialist -> {
-          specialist.setStatus(status);
-          return specialistRepo.save(specialist);
-        })
+    return specialistRepo
+        .findById(id)
+        .flatMap(
+            specialist -> {
+              specialist.setStatus(status);
+              return specialistRepo.save(specialist);
+            })
         .then();
   }
 
@@ -138,15 +139,19 @@ public class SpecialistService {
   }
 
   public Mono<Void> deleteSpecialistByEmail(String email) {
-    return specialistRepo.findByEmail(email)
-        .flatMap(specialist -> specialistRepo.delete(specialist)); // Deletes the specialist if found
+    return specialistRepo
+        .findByEmail(email)
+        .flatMap(
+            specialist -> specialistRepo.delete(specialist)); // Deletes the specialist if found
   }
 
-
   private Mono<Void> sendRegistrationSuccessEmail(String email, String name) {
-    return webClientBuilder.build()
-            .post()
-            .uri(uriBuilder -> uriBuilder
+    return webClientBuilder
+        .build()
+        .post()
+        .uri(
+            uriBuilder ->
+                uriBuilder
                     .scheme("http")
                     .host("localhost")
                     .port(9008)
@@ -154,11 +159,11 @@ public class SpecialistService {
                     .queryParam("to", email)
                     .queryParam("name", name)
                     .build())
-            .retrieve()
-            .bodyToMono(Void.class)
-            .doOnError(error -> {
+        .retrieve()
+        .bodyToMono(Void.class)
+        .doOnError(
+            error -> {
               System.out.println("Failed to send registration email: " + error.getMessage());
             });
   }
-
 }

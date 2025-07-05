@@ -17,8 +17,7 @@ import reactor.core.publisher.Mono;
 @CrossOrigin(origins = "*")
 public class BookingController {
 
-  @Autowired
-  private BookingService bookingService;
+  @Autowired private BookingService bookingService;
 
   @PostMapping
   public Mono<ResponseEntity<String>> createBooking(@RequestBody AddBookingDto booking) {
@@ -67,9 +66,9 @@ public class BookingController {
 
   @PutMapping("/{id}/status")
   public Mono<ResponseEntity<Void>> updateBookingStatus(
-          @PathVariable String id, @RequestParam String status) {
+      @PathVariable String id, @RequestParam String status) {
     return bookingService
-            .updateBookingStatus(new ObjectId(id), status)
-            .map(updatedBooking -> ResponseEntity.ok(updatedBooking));
+        .updateBookingStatus(new ObjectId(id), status)
+        .map(updatedBooking -> ResponseEntity.ok(updatedBooking));
   }
 }

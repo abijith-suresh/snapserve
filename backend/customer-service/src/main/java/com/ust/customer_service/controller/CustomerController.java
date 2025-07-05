@@ -17,11 +17,9 @@ import reactor.core.publisher.Mono;
 @CrossOrigin(origins = "*")
 public class CustomerController {
 
-  @Autowired
-  private WebClient.Builder webClientBuilder;
+  @Autowired private WebClient.Builder webClientBuilder;
 
-  @Autowired
-  private CustomerService customerService;
+  @Autowired private CustomerService customerService;
 
   @GetMapping
   public Flux<CustomerDto> getAllCustomers() {
@@ -31,7 +29,8 @@ public class CustomerController {
   @GetMapping("/{id}")
   public Mono<ResponseEntity<CustomerDto>> getCustomerById(@PathVariable String id) {
     ObjectId objectId = new ObjectId(id);
-    return customerService.findCustomerById(objectId)
+    return customerService
+        .findCustomerById(objectId)
         .map(customer -> ResponseEntity.ok(customer))
         .defaultIfEmpty(ResponseEntity.notFound().build());
   }
@@ -42,33 +41,34 @@ public class CustomerController {
   }
 
   @PutMapping("/{id}")
-  public Mono<ResponseEntity<Customer>> updateCustomer(@PathVariable ObjectId id,
-      @RequestBody Customer customerDetails) {
-    return customerService.updateCustomer(id, customerDetails)
+  public Mono<ResponseEntity<Customer>> updateCustomer(
+      @PathVariable ObjectId id, @RequestBody Customer customerDetails) {
+    return customerService
+        .updateCustomer(id, customerDetails)
         .map(updatedCustomer -> ResponseEntity.ok(updatedCustomer))
         .defaultIfEmpty(ResponseEntity.notFound().build());
   }
 
   @DeleteMapping("/{id}")
   public Mono<ResponseEntity<Void>> deleteCustomerById(@PathVariable ObjectId id) {
-    return customerService.deleteCustomerById(id)
-        .map(v -> ResponseEntity.noContent().build());
+    return customerService.deleteCustomerById(id).map(v -> ResponseEntity.noContent().build());
   }
 
   @GetMapping("/{id}/review")
   public Flux<ReviewDto> getAllReviewsById(@PathVariable ObjectId id) {
-    return webClientBuilder.build()
+    return webClientBuilder
+        .build()
         .get()
         .uri("http://localhost:9004/api/reviews/customer/{id}/reviews", id)
         .retrieve()
         .bodyToFlux(ReviewDto.class);
-
   }
 
   @PostMapping("/{id}/review")
   public Mono<ReviewDto> postReview(@RequestBody ReviewDto reviewDto) {
 
-    return webClientBuilder.build()
+    return webClientBuilder
+        .build()
         .post() // Use POST to create a new review.
         .uri("http://localhost:9004/api/reviews") // This is the updated URI.
         .bodyValue(reviewDto) // Pass the ReviewDto as the body of the request.
@@ -78,32 +78,37 @@ public class CustomerController {
 
   @GetMapping("/email/{email}")
   public Mono<ResponseEntity<CustomerDto>> getCustomerByEmail(@PathVariable String email) {
-    return customerService.findByEmail(email)
+    return customerService
+        .findByEmail(email)
         .map(customer -> ResponseEntity.ok(customer))
         .defaultIfEmpty(ResponseEntity.notFound().build());
   }
 
   @PutMapping("/{id}/update-email")
-  public Mono<ResponseEntity<Customer>> updateEmail(@PathVariable ObjectId id, @RequestBody EmailUpdateDto email) {
+  public Mono<ResponseEntity<Customer>> updateEmail(
+      @PathVariable ObjectId id, @RequestBody EmailUpdateDto email) {
     String newEmail = email.getEmail();
 
-    return customerService.findByEmail(newEmail)
-        .flatMap(existingCustomer -> {
-          if (existingCustomer != null) {
-            return Mono.just(ResponseEntity.status(HttpStatus.CONFLICT)
-                .body((Customer) null));
-          }
+    return customerService
+        .findByEmail(newEmail)
+        .flatMap(
+            existingCustomer -> {
+              if (existingCustomer != null) {
+                return Mono.just(ResponseEntity.status(HttpStatus.CONFLICT).body((Customer) null));
+              }
 
-          return customerService.updateCustomerByEmail(id, email)
-              .map(updatedCustomer -> ResponseEntity.ok(updatedCustomer))
-              .defaultIfEmpty(ResponseEntity.notFound().build());
-        })
+              return customerService
+                  .updateCustomerByEmail(id, email)
+                  .map(updatedCustomer -> ResponseEntity.ok(updatedCustomer))
+                  .defaultIfEmpty(ResponseEntity.notFound().build());
+            })
         .defaultIfEmpty(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
   }
 
   @GetMapping("/{id}/bookings")
   public Flux<BookingDto> getBookingsForCustomer(@PathVariable String id) {
-    return webClientBuilder.build()
+    return webClientBuilder
+        .build()
         .get()
         .uri("http://localhost:9001/api/booking/customer/{id}", id) // Booking Service endpoint
         .retrieve()
@@ -112,20 +117,23 @@ public class CustomerController {
 
   @GetMapping("/specialists")
   public Flux<SpecialistDto> getAllSpecialists() {
-    return webClientBuilder.build()
+    return webClientBuilder
+        .build()
         .get()
         .uri("http://localhost:9005/api/specialists")
         .retrieve()
         .bodyToFlux(SpecialistDto.class)
-        .doOnError(error -> {
-          System.err.println("Error fetching specialists");
-        });
+        .doOnError(
+            error -> {
+              System.err.println("Error fetching specialists");
+            });
   }
 
   @GetMapping("/specialist/{id}")
   public Mono<ResponseEntity<SpecialistDto>> getSpecialistById(@PathVariable String id) {
     // Use WebClient to call the specialist service by ID
-    return webClientBuilder.build()
+    return webClientBuilder
+        .build()
         .get()
         .uri("http://localhost:9005/api/specialists/id/{id}", id) // Specialist service URL
         .retrieve()
@@ -136,9 +144,9 @@ public class CustomerController {
 
   @DeleteMapping("/email/{email}")
   public Mono<ResponseEntity<Object>> deleteCustomerByEmail(@PathVariable String email) {
-    return customerService.deleteCustomerByEmail(email)
+    return customerService
+        .deleteCustomerByEmail(email)
         .then(Mono.just(ResponseEntity.noContent().build())) // Returns 204 No Content on success
         .defaultIfEmpty(ResponseEntity.notFound().build()); // Returns 404 if customer not found
   }
-
 }

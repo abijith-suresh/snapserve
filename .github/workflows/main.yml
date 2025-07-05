@@ -24,6 +24,12 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
+    - name: Run Spotless Check
+      run: |
+        cd backend
+        chmod +x gradlew
+        ./gradlew spotlessCheck
+
     - name: Build Backend with Gradle
       run: |
         cd backend

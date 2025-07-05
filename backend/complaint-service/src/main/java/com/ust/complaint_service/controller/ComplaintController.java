@@ -13,11 +13,9 @@ import reactor.core.publisher.Mono;
 @CrossOrigin(origins = "*")
 @RequestMapping("/api/complaints")
 public class ComplaintController {
-  @Autowired
-  private ComplaintService complaintService;
+  @Autowired private ComplaintService complaintService;
 
-  @Autowired
-  private WebClient.Builder webClientBuilder;
+  @Autowired private WebClient.Builder webClientBuilder;
 
   // Endpoint to submit a complaint
   @PostMapping("/submit-complaint")
@@ -31,5 +29,4 @@ public class ComplaintController {
 
     return complaintService.getAllComplaints();
   }
-
 }

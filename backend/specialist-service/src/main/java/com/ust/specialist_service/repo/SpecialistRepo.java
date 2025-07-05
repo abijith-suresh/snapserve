@@ -10,8 +10,7 @@ import reactor.core.publisher.Mono;
 
 @Repository
 public interface SpecialistRepo extends ReactiveMongoRepository<Specialist, ObjectId> {
-    Mono<Specialist> findByEmail(String email);
-    Flux<SpecialistDto> findByStatus(String status);
+  Mono<Specialist> findByEmail(String email);
 
-
+  Flux<SpecialistDto> findByStatus(String status);
 }
