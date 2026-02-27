@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
+    "type-check": "echo 'TypeScript not yet migrated - skipping type check'",
     "preview": "vite preview",
     "server": "json-server --watch db.json --port 5000"
   },
