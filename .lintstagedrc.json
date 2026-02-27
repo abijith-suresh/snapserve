@@ -1,0 +1,4 @@
+{
+  "frontend/src/**/*.{js,jsx,ts,tsx}": ["bunx eslint --fix", "bunx prettier --write"],
+  "**/*.{json,yml,yaml,md}": ["bunx prettier --write"]
+}
