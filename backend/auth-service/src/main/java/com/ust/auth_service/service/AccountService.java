@@ -7,23 +7,19 @@ import com.ust.auth_service.dto.UpdateEmailDto;
 import com.ust.auth_service.dto.UpdatePasswordDto;
 import com.ust.auth_service.model.Account;
 import com.ust.auth_service.repo.AccountRepo;
+import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.Optional;
-
 @Service
 public class AccountService {
 
-  @Autowired
-  private AccountRepo accountRepo;
+  @Autowired private AccountRepo accountRepo;
 
-  @Autowired
-  private PasswordEncoder passwordEncoder;
+  @Autowired private PasswordEncoder passwordEncoder;
 
-  @Autowired
-  private JwtTokenProvider jwtTokenProvider;
+  @Autowired private JwtTokenProvider jwtTokenProvider;
 
   // Convert DTO to Model
   private Account dtoToModel(RegisterDto registerDto) {
