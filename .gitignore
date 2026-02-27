@@ -13,6 +13,9 @@ HELP.md
 # Maven wrapper (keep jar, ignore everything else)
 !.mvn/wrapper/maven-wrapper.jar
 
+# Gradle wrapper jar must be committed
+!gradle/wrapper/gradle-wrapper.jar
+
 # Keep target directories in src (for resources)
 !**/src/main/**/target/
 !**/src/test/**/target/

@@ -1,22 +1,21 @@
 package com.ust.booking_service.dto;
 
+import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 public class BookingResponseDto {
 
-    private String bookingId;
-    private CustomerDto customer;
-    private SpecialistDto specialist;
-    private LocalDateTime bookingDate;
-    private LocalDateTime appointmentTime;
-    private String service;
-    private String status;
-    private String price;
+  private String bookingId;
+  private CustomerDto customer;
+  private SpecialistDto specialist;
+  private LocalDateTime bookingDate;
+  private LocalDateTime appointmentTime;
+  private String service;
+  private String status;
+  private String price;
 }

@@ -1,1 +1,6 @@
 bunx lint-staged
+
+STAGED_JAVA=$(git diff --cached --name-only --diff-filter=ACMR | grep '\.java$' || true)
+if [ -n "$STAGED_JAVA" ]; then
+  ./gradlew spotlessCheck
+fi

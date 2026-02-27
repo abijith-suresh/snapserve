@@ -5,21 +5,19 @@ import com.ust.auth_service.dto.RegisterDto;
 import com.ust.auth_service.dto.UpdateEmailDto;
 import com.ust.auth_service.dto.UpdatePasswordDto;
 import com.ust.auth_service.service.AccountService;
+import java.util.HashMap;
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.HashMap;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
 @CrossOrigin(origins = "*")
 public class AccountController {
 
-  @Autowired
-  private AccountService accountService;
+  @Autowired private AccountService accountService;
 
   @PostMapping("/register")
   public ResponseEntity<String> register(@RequestBody RegisterDto registerDto) {
