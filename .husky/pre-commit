@@ -2,7 +2,5 @@ bunx lint-staged
 
 STAGED_JAVA=$(git diff --cached --name-only --diff-filter=ACMR | grep '\.java$' || true)
 if [ -n "$STAGED_JAVA" ]; then
-  export JAVA_HOME="$HOME/.sdkman/candidates/java/current"
-  export PATH="$JAVA_HOME/bin:$PATH"
   ./gradlew spotlessCheck
 fi
