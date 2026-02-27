@@ -1,0 +1,90 @@
+# ====================
+# Java / Gradle
+# ====================
+# Build outputs
+build/
+.gradle/
+*.class
+*.jar
+out/
+target/
+HELP.md
+
+# Maven wrapper (keep jar, ignore everything else)
+!.mvn/wrapper/maven-wrapper.jar
+
+# Keep target directories in src (for resources)
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# Keep build directories in src (for resources)
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# ====================
+# Node / Bun / Frontend
+# ====================
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+dist-ssr/
+.vite/
+*.local
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ====================
+# Secrets
+# ====================
+.env
+
+# ====================
+# IDEs
+# ====================
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# VS Code (keep extensions.json for team sharing)
+.vscode/
+!.vscode/extensions.json
+
+# STS / Eclipse
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# Visual Studio
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ====================
+# OS
+# ====================
+.DS_Store
+Thumbs.db
