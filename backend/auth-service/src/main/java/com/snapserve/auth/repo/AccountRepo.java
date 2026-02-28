@@ -1,6 +1,6 @@
-package com.ust.auth_service.repo;
+package com.snapserve.auth.repo;
 
-import com.ust.auth_service.model.Account;
+import com.snapserve.auth.model.Account;
 import java.util.Optional;
 import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.repository.MongoRepository;

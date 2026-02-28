@@ -1,12 +1,12 @@
-package com.ust.auth_service.service;
+package com.snapserve.auth.service;
 
-import com.ust.auth_service.config.JwtTokenProvider;
-import com.ust.auth_service.dto.LoginDto;
-import com.ust.auth_service.dto.RegisterDto;
-import com.ust.auth_service.dto.UpdateEmailDto;
-import com.ust.auth_service.dto.UpdatePasswordDto;
-import com.ust.auth_service.model.Account;
-import com.ust.auth_service.repo.AccountRepo;
+import com.snapserve.auth.config.JwtTokenProvider;
+import com.snapserve.auth.dto.LoginDto;
+import com.snapserve.auth.dto.RegisterDto;
+import com.snapserve.auth.dto.UpdateEmailDto;
+import com.snapserve.auth.dto.UpdatePasswordDto;
+import com.snapserve.auth.model.Account;
+import com.snapserve.auth.repo.AccountRepo;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;

@@ -1,8 +1,8 @@
-package com.ust.auth_service.service;
+package com.snapserve.auth.service;
 
-import com.ust.auth_service.model.Account;
-import com.ust.auth_service.repo.AccountRepo;
-import com.ust.auth_service.security.UserDetailsImpl;
+import com.snapserve.auth.model.Account;
+import com.snapserve.auth.repo.AccountRepo;
+import com.snapserve.auth.security.UserDetailsImpl;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;

@@ -1,4 +1,4 @@
-package com.ust.auth_service.dto;
+package com.snapserve.auth.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

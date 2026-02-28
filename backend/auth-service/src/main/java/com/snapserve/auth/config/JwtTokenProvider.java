@@ -1,4 +1,4 @@
-package com.ust.auth_service.config;
+package com.snapserve.auth.config;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;

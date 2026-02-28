@@ -1,10 +1,10 @@
-package com.ust.auth_service.controller;
+package com.snapserve.auth.controller;
 
-import com.ust.auth_service.dto.LoginDto;
-import com.ust.auth_service.dto.RegisterDto;
-import com.ust.auth_service.dto.UpdateEmailDto;
-import com.ust.auth_service.dto.UpdatePasswordDto;
-import com.ust.auth_service.service.AccountService;
+import com.snapserve.auth.dto.LoginDto;
+import com.snapserve.auth.dto.RegisterDto;
+import com.snapserve.auth.dto.UpdateEmailDto;
+import com.snapserve.auth.dto.UpdatePasswordDto;
+import com.snapserve.auth.service.AccountService;
 import java.util.HashMap;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;

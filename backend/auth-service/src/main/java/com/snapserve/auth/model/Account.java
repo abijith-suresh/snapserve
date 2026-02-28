@@ -1,4 +1,4 @@
-package com.ust.auth_service.model;
+package com.snapserve.auth.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

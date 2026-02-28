@@ -1,6 +1,6 @@
-package com.ust.auth_service.security;
+package com.snapserve.auth.security;
 
-import com.ust.auth_service.model.Account;
+import com.snapserve.auth.model.Account;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.stream.Collectors;
