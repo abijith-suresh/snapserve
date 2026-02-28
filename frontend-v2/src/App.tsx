@@ -1,16 +1,50 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { RouterProvider, createBrowserRouter } from 'react-router'
+import { RouterProvider, createBrowserRouter, Navigate } from 'react-router'
+import { useAuthStore } from './features/auth/store'
 import RootLayout from './routes/RootLayout'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
 import NotFoundPage from './pages/NotFoundPage'
+import BrowseSpecialists from './pages/BrowseSpecialists'
+import SpecialistProfile from './pages/SpecialistProfile'
+import CustomerLayout from './features/customer/Layout'
 import CustomerDashboard from './features/customer/Dashboard'
+import CustomerBookings from './features/customer/Bookings'
+import CustomerBookingDetail from './features/customer/BookingDetail'
+import CustomerProfile from './features/customer/Profile'
+import SpecialistLayout from './features/specialist/Layout'
 import SpecialistDashboard from './features/specialist/Dashboard'
+import SpecialistAppointments from './features/specialist/Appointments'
+import SpecialistAppointmentDetail from './features/specialist/AppointmentDetail'
+import SpecialistProfileManage from './features/specialist/Profile'
 import { ProtectedRoute } from './routes/ProtectedRoute'
 import './index.css'
 
 const queryClient = new QueryClient()
+
+// Redirect component for /dashboard
+function DashboardRedirect() {
+  const { user } = useAuthStore()
+  if (!user) return <Navigate to="/login" replace />
+  return <Navigate to={`/${user.role}/dashboard`} replace />
+}
+
+// Redirect component for /bookings
+function BookingsRedirect() {
+  const { user } = useAuthStore()
+  if (!user) return <Navigate to="/login" replace />
+  if (user.role === 'customer') return <Navigate to="/customer/bookings" replace />
+  if (user.role === 'specialist') return <Navigate to="/specialist/appointments" replace />
+  return <Navigate to="/" replace />
+}
+
+// Redirect component for /profile
+function ProfileRedirect() {
+  const { user } = useAuthStore()
+  if (!user) return <Navigate to="/login" replace />
+  return <Navigate to={`/${user.role}/profile`} replace />
+}
 
 const router = createBrowserRouter([
   {
@@ -20,23 +54,46 @@ const router = createBrowserRouter([
       { index: true, element: <HomePage /> },
       { path: 'login', element: <LoginPage /> },
       { path: 'signup', element: <SignupPage /> },
-      {
-        path: 'customer',
-        element: (
-          <ProtectedRoute allowedRoles={['customer']}>
-            <CustomerDashboard />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: 'specialist',
-        element: (
-          <ProtectedRoute allowedRoles={['specialist']}>
-            <SpecialistDashboard />
-          </ProtectedRoute>
-        ),
-      },
+      { path: 'specialists', element: <BrowseSpecialists /> },
+      { path: 'specialists/:id', element: <SpecialistProfile /> },
+      { path: 'dashboard', element: <DashboardRedirect /> },
+      { path: 'bookings', element: <BookingsRedirect /> },
+      { path: 'profile', element: <ProfileRedirect /> },
       { path: '*', element: <NotFoundPage /> },
+    ],
+  },
+  // Customer Routes
+  {
+    path: '/customer',
+    element: (
+      <ProtectedRoute allowedRoles={['customer']}>
+        <CustomerLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      { path: 'dashboard', element: <CustomerDashboard /> },
+      { path: 'specialists', element: <BrowseSpecialists /> },
+      { path: 'specialists/:id', element: <SpecialistProfile /> },
+      { path: 'bookings', element: <CustomerBookings /> },
+      { path: 'bookings/:id', element: <CustomerBookingDetail /> },
+      { path: 'profile', element: <CustomerProfile /> },
+      { index: true, element: <Navigate to="dashboard" replace /> },
+    ],
+  },
+  // Specialist Routes
+  {
+    path: '/specialist',
+    element: (
+      <ProtectedRoute allowedRoles={['specialist']}>
+        <SpecialistLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      { path: 'dashboard', element: <SpecialistDashboard /> },
+      { path: 'appointments', element: <SpecialistAppointments /> },
+      { path: 'appointments/:id', element: <SpecialistAppointmentDetail /> },
+      { path: 'profile', element: <SpecialistProfileManage /> },
+      { index: true, element: <Navigate to="dashboard" replace /> },
     ],
   },
 ])

@@ -1,6 +1,14 @@
-import { Link } from 'react-router'
+import { Link, Navigate } from 'react-router'
+import { useAuthStore } from '@/features/auth/store'
 
 export default function HomePage() {
+  const { isAuthenticated, user } = useAuthStore()
+
+  // Redirect to dashboard if already logged in
+  if (isAuthenticated && user) {
+    return <Navigate to={`/${user.role}/dashboard`} replace />
+  }
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-20">
       <div className="text-center">

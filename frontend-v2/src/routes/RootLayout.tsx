@@ -1,9 +1,9 @@
-import { Outlet } from 'react-router'
-import { Link } from 'react-router'
+import { Outlet, Link } from 'react-router'
 import { useAuthStore } from '@/features/auth/store'
+import { Search, LayoutDashboard } from 'lucide-react'
 
 export default function RootLayout() {
-  const { isAuthenticated, user, logout } = useAuthStore()
+  const { isAuthenticated, logout } = useAuthStore()
 
   return (
     <div className="min-h-screen">
@@ -12,10 +12,28 @@ export default function RootLayout() {
           <Link to="/" className="font-bold text-xl">
             SnapServe
           </Link>
-          <div className="flex items-center gap-4">
+
+          <div className="flex items-center gap-6">
+            {/* Public navigation */}
+            <Link
+              to="/specialists"
+              className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
+            >
+              <Search className="h-4 w-4" />
+              Browse Specialists
+            </Link>
+
+            <div className="h-4 w-px bg-gray-300" />
+
             {isAuthenticated ? (
               <>
-                <span className="text-sm text-gray-600">{user?.email}</span>
+                <Link
+                  to="/dashboard"
+                  className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
+                >
+                  <LayoutDashboard className="h-4 w-4" />
+                  Dashboard
+                </Link>
                 <button
                   onClick={logout}
                   className="text-sm px-3 py-1 bg-gray-100 rounded hover:bg-gray-200"
@@ -28,7 +46,10 @@ export default function RootLayout() {
                 <Link to="/login" className="text-sm">
                   Login
                 </Link>
-                <Link to="/signup" className="text-sm px-3 py-1 bg-blue-600 text-white rounded">
+                <Link
+                  to="/signup"
+                  className="text-sm px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
                   Sign Up
                 </Link>
               </>
