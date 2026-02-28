@@ -1,0 +1,22 @@
+package com.snapserve.auth.service;
+
+import com.snapserve.auth.model.Account;
+import com.snapserve.auth.repo.AccountRepo;
+import com.snapserve.auth.security.UserDetailsImpl;
+import java.util.Optional;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+
+public class UserDetailsServiceImpl implements UserDetailsService {
+
+  @Autowired private AccountRepo accountRepo;
+
+  @Override
+  public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+    Optional<Account> user = accountRepo.findByEmail(username);
+    return user.map(UserDetailsImpl::new)
+        .orElseThrow(() -> new UsernameNotFoundException("Username/password not valid"));
+  }
+}
