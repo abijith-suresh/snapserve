@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: user-service
+  data:
+    mongodb:
+      uri: ${MONGODB_URI}
+
+server:
+  port: 9001
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+notification:
+  service:
+    url: ${NOTIFICATION_SERVICE_URL:http://notification-service:9003}
