@@ -51,7 +51,6 @@ public class AuthenticationInterceptor implements HandlerInterceptor {
     if (roles == null) return false;
     if (path.contains("/specialists")) return roles.contains("specialist");
     if (path.contains("/customers")) return roles.contains("customer");
-    if (path.contains("/admin")) return roles.contains("admin");
     return true;
   }
 }
