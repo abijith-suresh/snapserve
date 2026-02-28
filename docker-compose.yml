@@ -1,0 +1,164 @@
+version: '3.8'
+
+services:
+  # Optional MongoDB container - disable if using MongoDB Atlas
+  mongo:
+    image: mongo:7-jammy
+    container_name: snapserve-mongo
+    restart: ${RESTART_POLICY:-no}
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-password}
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - snapserve-network
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: backend/auth-service/Dockerfile
+    container_name: snapserve-auth-service
+    restart: ${RESTART_POLICY:-no}
+    environment:
+      MONGODB_URI: ${MONGODB_URI}
+      JWT_SECRET: ${JWT_SECRET}
+    ports:
+      - '9000:9000'
+    depends_on:
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      test:
+        ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:9000/actuator/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - snapserve-network
+
+  user-service:
+    build:
+      context: .
+      dockerfile: backend/user-service/Dockerfile
+    container_name: snapserve-user-service
+    restart: ${RESTART_POLICY:-no}
+    environment:
+      MONGODB_URI: ${MONGODB_URI}
+      NOTIFICATION_SERVICE_URL: http://notification-service:9003
+    ports:
+      - '9001:9001'
+    depends_on:
+      mongo:
+        condition: service_healthy
+      notification-service:
+        condition: service_started
+    healthcheck:
+      test:
+        ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:9001/actuator/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - snapserve-network
+
+  booking-service:
+    build:
+      context: .
+      dockerfile: backend/booking-service/Dockerfile
+    container_name: snapserve-booking-service
+    restart: ${RESTART_POLICY:-no}
+    environment:
+      MONGODB_URI: ${MONGODB_URI}
+      USER_SERVICE_URL: http://user-service:9001
+      NOTIFICATION_SERVICE_URL: http://notification-service:9003
+    ports:
+      - '9002:9002'
+    depends_on:
+      mongo:
+        condition: service_healthy
+      user-service:
+        condition: service_started
+      notification-service:
+        condition: service_started
+    healthcheck:
+      test:
+        ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:9002/actuator/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - snapserve-network
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: backend/notification-service/Dockerfile
+    container_name: snapserve-notification-service
+    restart: ${RESTART_POLICY:-no}
+    environment:
+      GMAIL_USERNAME: ${GMAIL_USERNAME}
+      GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD}
+    ports:
+      - '9003:9003'
+    healthcheck:
+      test:
+        ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:9003/actuator/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - snapserve-network
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: backend/api-gateway/Dockerfile
+    container_name: snapserve-api-gateway
+    restart: ${RESTART_POLICY:-no}
+    environment:
+      AUTH_SERVICE_URL: http://auth-service:9000
+      USER_SERVICE_URL: http://user-service:9001
+      BOOKING_SERVICE_URL: http://booking-service:9002
+      NOTIFICATION_SERVICE_URL: http://notification-service:9003
+      JWT_SECRET: ${JWT_SECRET}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
+    ports:
+      - '9090:9090'
+    depends_on:
+      auth-service:
+        condition: service_started
+      user-service:
+        condition: service_started
+      booking-service:
+        condition: service_started
+      notification-service:
+        condition: service_started
+    healthcheck:
+      test:
+        ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:9090/actuator/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - snapserve-network
+
+volumes:
+  mongo_data:
+
+networks:
+  snapserve-network:
+    driver: bridge
