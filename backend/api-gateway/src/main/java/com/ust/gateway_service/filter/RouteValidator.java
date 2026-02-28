@@ -1,20 +1,15 @@
 package com.ust.gateway_service.filter;
 
 import java.util.List;
-import java.util.function.Predicate;
-import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
 
 @Component
 public class RouteValidator {
-  public static final List<String> OPEN_API_ENDPOINTS =
-      List.of(
-          "/api/auth/register",
-          "/api/auth/login",
-          "/api/auth/validate/token",
-          "api/auth/extract/roles");
 
-  public Predicate<ServerHttpRequest> isSecured =
-      request ->
-          OPEN_API_ENDPOINTS.stream().noneMatch(uri -> request.getURI().getPath().equals(uri));
+  public static final List<String> OPEN_ENDPOINTS =
+      List.of("/api/auth/register", "/api/auth/login", "/api/auth/validate/token");
+
+  public boolean isSecured(String path) {
+    return OPEN_ENDPOINTS.stream().noneMatch(path::equals);
+  }
 }
