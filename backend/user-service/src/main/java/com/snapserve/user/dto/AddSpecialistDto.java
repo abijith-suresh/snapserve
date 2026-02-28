@@ -22,5 +22,4 @@ public class AddSpecialistDto {
   private List<String> photos;
   private int experience;
   private String address;
-  private String status;
 }

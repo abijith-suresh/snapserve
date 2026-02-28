@@ -36,8 +36,7 @@ public class SpecialistService {
         specialist.getServices(),
         specialist.getPhotos(),
         specialist.getExperience(),
-        specialist.getAddress(),
-        specialist.getStatus());
+        specialist.getAddress());
   }
 
   private void dtoToModel(Specialist specialist, AddSpecialistDto dto) {
@@ -53,7 +52,6 @@ public class SpecialistService {
     specialist.setPhotos(dto.getPhotos());
     specialist.setExperience(dto.getExperience());
     specialist.setAddress(dto.getAddress());
-    specialist.setStatus(dto.getStatus());
   }
 
   public List<SpecialistDto> getAllSpecialists() {
@@ -96,22 +94,6 @@ public class SpecialistService {
               return specialistRepository.save(existing);
             })
         .orElse(null);
-  }
-
-  public void updateSpecialistStatus(ObjectId id, String status) {
-    specialistRepository
-        .findById(id)
-        .ifPresent(
-            specialist -> {
-              specialist.setStatus(status);
-              specialistRepository.save(specialist);
-            });
-  }
-
-  public List<SpecialistDto> getSpecialistsByStatus(String status) {
-    return specialistRepository.findByStatus(status).stream()
-        .map(this::modelToDto)
-        .collect(Collectors.toList());
   }
 
   public void deleteSpecialistByEmail(String email) {
