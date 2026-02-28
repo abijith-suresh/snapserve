@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Optional MongoDB container - disable if using MongoDB Atlas
   mongo:
