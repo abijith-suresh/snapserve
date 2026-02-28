@@ -2,32 +2,46 @@ package com.ust.auth_service.config;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
-import java.security.Key;
+import jakarta.annotation.PostConstruct;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import javax.crypto.SecretKey;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
 public class JwtTokenProvider {
 
+  @Value("${jwt.secret}")
+  private String jwtSecret;
+
+  @Value("${jwt.expiration-ms}")
+  private long expirationMs;
+
+  private SecretKey signingKey;
+
+  @PostConstruct
+  public void init() {
+    this.signingKey = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+  }
+
   public String createToken(String email, String roles) {
     long now = System.currentTimeMillis();
-    long EXPIRATION_TIME = 3600000;
-    Date expiryDate = new Date(now + EXPIRATION_TIME);
+    Date expiryDate = new Date(now + expirationMs);
 
     return Jwts.builder()
-        .setSubject(email)
-        .setIssuedAt(new Date(now))
-        .setExpiration(expiryDate)
+        .subject(email)
+        .issuedAt(new Date(now))
+        .expiration(expiryDate)
         .claim("roles", roles)
-        .signWith(SignatureAlgorithm.HS512, getSignKey())
+        .signWith(signingKey)
         .compact();
   }
 
   public boolean validateToken(String token) {
     try {
-      Jwts.parser().setSigningKey(getSignKey()).parseClaimsJws(token);
+      Jwts.parser().verifyWith(signingKey).build().parseSignedClaims(token);
       return true;
     } catch (io.jsonwebtoken.ExpiredJwtException e) {
       throw new RuntimeException("Token is expired");
@@ -37,15 +51,11 @@ public class JwtTokenProvider {
   }
 
   public Claims getClaimsFromToken(String token) {
-    return Jwts.parser().setSigningKey(getSignKey()).parseClaimsJws(token).getBody();
+    return Jwts.parser().verifyWith(signingKey).build().parseSignedClaims(token).getPayload();
   }
 
   public String getUsernameFromToken(String token) {
     Claims claims = getClaimsFromToken(token);
     return claims.getSubject();
-  }
-
-  private Key getSignKey() {
-    return Keys.secretKeyFor(SignatureAlgorithm.HS512);
   }
 }
