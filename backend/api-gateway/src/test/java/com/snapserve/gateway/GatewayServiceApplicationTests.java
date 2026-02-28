@@ -1,4 +1,4 @@
-package com.ust.gateway_service;
+package com.snapserve.gateway;
 
 import org.junit.jupiter.api.Test;
 

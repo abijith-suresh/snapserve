@@ -1,6 +1,6 @@
-package com.ust.gateway_service.config;
+package com.snapserve.gateway.config;
 
-import com.ust.gateway_service.filter.AuthenticationInterceptor;
+import com.snapserve.gateway.filter.AuthenticationInterceptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;

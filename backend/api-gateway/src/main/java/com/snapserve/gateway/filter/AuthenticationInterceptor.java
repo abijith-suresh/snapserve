@@ -1,4 +1,4 @@
-package com.ust.gateway_service.filter;
+package com.snapserve.gateway.filter;
 
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.HttpServletRequest;

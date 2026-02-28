@@ -1,4 +1,4 @@
-package com.ust.gateway_service.filter;
+package com.snapserve.gateway.filter;
 
 import java.util.List;
 import org.springframework.stereotype.Component;
