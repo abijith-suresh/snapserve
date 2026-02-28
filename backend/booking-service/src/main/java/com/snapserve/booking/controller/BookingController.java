@@ -1,9 +1,9 @@
-package com.ust.booking_service.controller;
+package com.snapserve.booking.controller;
 
-import com.ust.booking_service.dto.AddBookingDto;
-import com.ust.booking_service.dto.BookingResponseDto;
-import com.ust.booking_service.entity.Booking;
-import com.ust.booking_service.service.BookingService;
+import com.snapserve.booking.dto.AddBookingDto;
+import com.snapserve.booking.dto.BookingResponseDto;
+import com.snapserve.booking.entity.Booking;
+import com.snapserve.booking.service.BookingService;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;

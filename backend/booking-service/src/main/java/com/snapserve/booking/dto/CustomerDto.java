@@ -1,4 +1,4 @@
-package com.ust.booking_service.dto;
+package com.snapserve.booking.dto;
 
 import java.time.LocalDate;
 import lombok.AllArgsConstructor;

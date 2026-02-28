@@ -1,6 +1,6 @@
-package com.ust.booking_service.repo;
+package com.snapserve.booking.repo;
 
-import com.ust.booking_service.entity.Booking;
+import com.snapserve.booking.entity.Booking;
 import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.repository.ReactiveMongoRepository;
 import org.springframework.stereotype.Repository;

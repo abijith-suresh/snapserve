@@ -1,4 +1,4 @@
-package com.ust.booking_service;
+package com.snapserve.booking;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

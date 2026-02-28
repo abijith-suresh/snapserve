@@ -1,4 +1,4 @@
-package com.ust.booking_service;
+package com.snapserve.booking;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
