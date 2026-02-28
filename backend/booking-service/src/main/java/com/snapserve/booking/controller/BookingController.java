@@ -2,73 +2,70 @@ package com.snapserve.booking.controller;
 
 import com.snapserve.booking.dto.AddBookingDto;
 import com.snapserve.booking.dto.BookingResponseDto;
-import com.snapserve.booking.entity.Booking;
+import com.snapserve.booking.model.Booking;
 import com.snapserve.booking.service.BookingService;
+import java.util.List;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 @RestController
-@RequestMapping("/api/booking")
-@CrossOrigin(origins = "*")
+@RequestMapping("/api/v1/bookings")
 public class BookingController {
 
   @Autowired private BookingService bookingService;
 
   @PostMapping
-  public Mono<ResponseEntity<String>> createBooking(@RequestBody AddBookingDto booking) {
-    return bookingService
-        .createBooking(booking)
-        .map(savedBooking -> ResponseEntity.status(HttpStatus.CREATED).body(savedBooking))
-        .defaultIfEmpty(ResponseEntity.status(HttpStatus.BAD_REQUEST).build());
+  public ResponseEntity<String> createBooking(@RequestBody AddBookingDto booking) {
+    String result = bookingService.createBooking(booking);
+    return ResponseEntity.status(HttpStatus.CREATED).body(result);
   }
 
   @GetMapping
-  public Flux<BookingResponseDto> getAllBookings() {
-    return bookingService.getAllBookings();
+  public ResponseEntity<List<BookingResponseDto>> getAllBookings() {
+    return ResponseEntity.ok(bookingService.getAllBookings());
   }
 
   @GetMapping("/{id}")
-  public Mono<ResponseEntity<BookingResponseDto>> getBookingById(@PathVariable String id) {
-    return bookingService
-        .getBookingById(new ObjectId(id))
-        .map(booking -> ResponseEntity.ok(booking))
-        .defaultIfEmpty(ResponseEntity.notFound().build());
+  public ResponseEntity<BookingResponseDto> getBookingById(@PathVariable String id) {
+    BookingResponseDto booking = bookingService.getBookingById(new ObjectId(id));
+    if (booking == null) {
+      return ResponseEntity.notFound().build();
+    }
+    return ResponseEntity.ok(booking);
   }
 
   @PutMapping("/{id}")
-  public Mono<ResponseEntity<Booking>> updateBooking(
-      @PathVariable ObjectId id, @RequestBody Booking bookingDetails) {
-    return bookingService
-        .updateBooking(id, bookingDetails)
-        .map(updatedBooking -> ResponseEntity.ok(updatedBooking))
-        .defaultIfEmpty(ResponseEntity.notFound().build());
+  public ResponseEntity<Booking> updateBooking(
+      @PathVariable String id, @RequestBody Booking bookingDetails) {
+    Booking updated = bookingService.updateBooking(new ObjectId(id), bookingDetails);
+    return ResponseEntity.ok(updated);
   }
 
   @DeleteMapping("/{id}")
-  public Mono<ResponseEntity<Void>> deleteBooking(@PathVariable ObjectId id) {
-    return bookingService.deleteBooking(id).map(v -> ResponseEntity.noContent().build());
+  public ResponseEntity<Void> deleteBooking(@PathVariable String id) {
+    bookingService.deleteBooking(new ObjectId(id));
+    return ResponseEntity.noContent().build();
   }
 
   @GetMapping("/customer/{customerId}")
-  public Flux<BookingResponseDto> getBookingsByCustomerId(@PathVariable String customerId) {
-    return bookingService.getBookingsByCustomerId(new ObjectId(customerId));
+  public ResponseEntity<List<BookingResponseDto>> getBookingsByCustomerId(
+      @PathVariable String customerId) {
+    return ResponseEntity.ok(bookingService.getBookingsByCustomerId(new ObjectId(customerId)));
   }
 
   @GetMapping("/specialist/{specialistId}")
-  public Flux<BookingResponseDto> getBookingsBySpecialistId(@PathVariable String specialistId) {
-    return bookingService.getBookingsBySpecialistId(new ObjectId(specialistId));
+  public ResponseEntity<List<BookingResponseDto>> getBookingsBySpecialistId(
+      @PathVariable String specialistId) {
+    return ResponseEntity.ok(bookingService.getBookingsBySpecialistId(new ObjectId(specialistId)));
   }
 
   @PutMapping("/{id}/status")
-  public Mono<ResponseEntity<Void>> updateBookingStatus(
+  public ResponseEntity<Void> updateBookingStatus(
       @PathVariable String id, @RequestParam String status) {
-    return bookingService
-        .updateBookingStatus(new ObjectId(id), status)
-        .map(updatedBooking -> ResponseEntity.ok(updatedBooking));
+    bookingService.updateBookingStatus(new ObjectId(id), status);
+    return ResponseEntity.ok().build();
   }
 }

@@ -1,4 +1,4 @@
-package com.snapserve.booking.entity;
+package com.snapserve.booking.model;
 
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;

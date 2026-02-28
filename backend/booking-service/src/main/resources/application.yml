@@ -13,3 +13,11 @@ management:
     web:
       exposure:
         include: health,info
+
+user:
+  service:
+    url: ${USER_SERVICE_URL:http://user-service:9001}
+
+notification:
+  service:
+    url: ${NOTIFICATION_SERVICE_URL:http://notification-service:9003}
