@@ -1,6 +1,6 @@
-package com.ust.notification_service.controller;
+package com.snapserve.notification.controller;
 
-import com.ust.notification_service.service.NotificationService;
+import com.snapserve.notification.service.NotificationService;
 import jakarta.mail.MessagingException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;

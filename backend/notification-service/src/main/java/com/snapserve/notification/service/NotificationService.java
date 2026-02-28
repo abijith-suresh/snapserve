@@ -1,4 +1,4 @@
-package com.ust.notification_service.service;
+package com.snapserve.notification.service;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;

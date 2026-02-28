@@ -1,4 +1,4 @@
-package com.ust.notification_service;
+package com.snapserve.notification;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

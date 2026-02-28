@@ -1,4 +1,4 @@
-package com.ust.notification_service;
+package com.snapserve.notification;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
