@@ -3,6 +3,7 @@ package com.ust.notification_service.service;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -15,6 +16,9 @@ public class NotificationService {
   @Autowired private JavaMailSender javaMailSender;
 
   @Autowired private TemplateEngine templateEngine;
+
+  @Value("${spring.mail.username}")
+  private String fromAddress;
 
   // Send Registration Success Email
   public void sendRegistrationSuccessEmail(String to, String name) throws MessagingException {
@@ -90,7 +94,7 @@ public class NotificationService {
     helper.setTo(to);
     helper.setSubject(subject);
     helper.setText(htmlContent, true);
-    helper.setFrom("help.snapserve@gmail.com");
+    helper.setFrom(fromAddress);
 
     // Send the email
     javaMailSender.send(mimeMessage);

@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: booking-service
+  data:
+    mongodb:
+      uri: ${MONGODB_URI}
+
+server:
+  port: 9002
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
