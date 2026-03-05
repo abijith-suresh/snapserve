@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router'
-import { Input } from '@/components/ui/input'
+import { Link, useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 
 export default function SignupPage() {
   const navigate = useNavigate()

@@ -1,6 +1,6 @@
-import { Outlet, Link, useLocation } from 'react-router'
+import { Calendar, LayoutDashboard, User } from 'lucide-react'
+import { Link, Outlet, useLocation } from 'react-router'
 import { useAuthStore } from '@/features/auth/store'
-import { LayoutDashboard, Calendar, User } from 'lucide-react'
 
 const navigation = [
   { name: 'Dashboard', href: '/specialist/dashboard', icon: LayoutDashboard },
