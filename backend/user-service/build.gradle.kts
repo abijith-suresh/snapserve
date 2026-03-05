@@ -12,6 +12,7 @@ dependencyManagement {
 
 dependencies {
     implementation(project(":backend:common"))
+    implementation(project(":backend:user-service-client"))
     implementation(libs.spring.boot.starter.web)
     implementation(libs.spring.boot.starter.data.mongodb)
     implementation(libs.spring.boot.starter.actuator)

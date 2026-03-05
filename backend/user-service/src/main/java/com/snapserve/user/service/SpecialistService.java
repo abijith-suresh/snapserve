@@ -1,9 +1,9 @@
 package com.snapserve.user.service;
 
 import com.snapserve.user.dto.AddSpecialistDto;
-import com.snapserve.user.dto.SpecialistDto;
 import com.snapserve.user.model.Specialist;
 import com.snapserve.user.repo.SpecialistRepository;
+import com.snapserve.userclient.dto.SpecialistDto;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.bson.types.ObjectId;

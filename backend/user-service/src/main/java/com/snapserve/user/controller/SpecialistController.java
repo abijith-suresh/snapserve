@@ -1,9 +1,9 @@
 package com.snapserve.user.controller;
 
 import com.snapserve.user.dto.AddSpecialistDto;
-import com.snapserve.user.dto.SpecialistDto;
 import com.snapserve.user.model.Specialist;
 import com.snapserve.user.service.SpecialistService;
+import com.snapserve.userclient.dto.SpecialistDto;
 import java.util.List;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;

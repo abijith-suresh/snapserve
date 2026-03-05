@@ -1,8 +1,8 @@
 package com.snapserve.user.controller;
 
-import com.snapserve.user.dto.CustomerDto;
 import com.snapserve.user.model.Customer;
 import com.snapserve.user.service.CustomerService;
+import com.snapserve.userclient.dto.CustomerDto;
 import java.util.List;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
