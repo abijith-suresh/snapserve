@@ -1,7 +1,6 @@
 package com.snapserve.user.controller;
 
 import com.snapserve.user.dto.CustomerDto;
-import com.snapserve.user.dto.EmailUpdateDto;
 import com.snapserve.user.model.Customer;
 import com.snapserve.user.service.CustomerService;
 import java.util.List;
@@ -50,35 +49,6 @@ public class CustomerController {
   @DeleteMapping("/{id}")
   public ResponseEntity<Void> deleteCustomerById(@PathVariable String id) {
     customerService.deleteCustomerById(new ObjectId(id));
-    return ResponseEntity.noContent().build();
-  }
-
-  @GetMapping("/email/{email}")
-  public ResponseEntity<CustomerDto> getCustomerByEmail(@PathVariable String email) {
-    CustomerDto customer = customerService.findByEmail(email);
-    if (customer == null) {
-      return ResponseEntity.notFound().build();
-    }
-    return ResponseEntity.ok(customer);
-  }
-
-  @PutMapping("/{id}/update-email")
-  public ResponseEntity<Customer> updateCustomerEmail(
-      @PathVariable String id, @RequestBody EmailUpdateDto emailUpdateDto) {
-    CustomerDto existing = customerService.findByEmail(emailUpdateDto.getEmail());
-    if (existing != null) {
-      return ResponseEntity.status(HttpStatus.CONFLICT).build();
-    }
-    Customer updated = customerService.updateCustomerEmail(new ObjectId(id), emailUpdateDto);
-    if (updated == null) {
-      return ResponseEntity.notFound().build();
-    }
-    return ResponseEntity.ok(updated);
-  }
-
-  @DeleteMapping("/email/{email}")
-  public ResponseEntity<Void> deleteCustomerByEmail(@PathVariable String email) {
-    customerService.deleteCustomerByEmail(email);
     return ResponseEntity.noContent().build();
   }
 }
