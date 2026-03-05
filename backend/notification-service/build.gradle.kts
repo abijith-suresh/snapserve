@@ -11,6 +11,7 @@ dependencyManagement {
 }
 
 dependencies {
+    implementation(project(":backend:common"))
     implementation(libs.spring.boot.starter.web)
     implementation(libs.spring.boot.starter.mail)
     implementation(libs.spring.boot.starter.thymeleaf)

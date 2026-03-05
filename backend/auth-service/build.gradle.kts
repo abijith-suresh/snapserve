@@ -11,6 +11,7 @@ dependencyManagement {
 }
 
 dependencies {
+    implementation(project(":backend:common"))
     implementation(libs.spring.boot.starter.web)
     implementation(libs.spring.boot.starter.security)
     implementation(libs.spring.boot.starter.data.mongodb)

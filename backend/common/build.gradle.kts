@@ -1,20 +1,19 @@
 plugins {
-    alias(libs.plugins.spring.boot)
+    `java-library`
     alias(libs.plugins.spring.dep.mgmt)
     alias(libs.plugins.spotless)
 }
 
 dependencyManagement {
     imports {
+        mavenBom("org.springframework.boot:spring-boot-dependencies:${libs.versions.spring.boot.get()}")
         mavenBom("org.springframework.cloud:spring-cloud-dependencies:${libs.versions.spring.cloud.get()}")
     }
 }
 
 dependencies {
-    implementation(project(":backend:common"))
-    implementation(libs.spring.boot.starter.web)
-    implementation(libs.spring.boot.starter.data.mongodb)
-    implementation(libs.spring.boot.starter.actuator)
+    compileOnly(libs.spring.boot.starter.web)
+    compileOnly(libs.spring.boot.starter.validation)
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
     testImplementation(libs.spring.boot.starter.test)
