@@ -5,6 +5,8 @@ import com.snapserve.auth.dto.LoginDto;
 import com.snapserve.auth.dto.RegisterDto;
 import com.snapserve.auth.model.Account;
 import com.snapserve.auth.repo.AccountRepo;
+import com.snapserve.common.exception.BadRequestException;
+import com.snapserve.common.exception.ConflictException;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -27,13 +29,11 @@ public class AccountService {
     return account;
   }
 
-  public String register(RegisterDto registerDto) {
+  public void register(RegisterDto registerDto) {
     if (accountRepo.findByEmail(registerDto.getEmail()).isPresent()) {
-      throw new RuntimeException("Account with email already exists");
+      throw new ConflictException("Account with email already exists");
     }
-    Account account = dtoToModel(registerDto);
-    accountRepo.save(account);
-    return "User Registered Successfully";
+    accountRepo.save(dtoToModel(registerDto));
   }
 
   public String login(LoginDto loginDto) {
@@ -41,16 +41,14 @@ public class AccountService {
     return account
         .filter(acc -> passwordEncoder.matches(loginDto.getPassword(), acc.getPassword()))
         .map(acc -> jwtTokenProvider.createToken(acc.getEmail(), acc.getRoles()))
-        .orElseThrow(() -> new RuntimeException("Invalid Credentials"));
+        .orElseThrow(() -> new BadRequestException("Invalid credentials"));
   }
 
   public String getRolesFromEmail(String email) {
-    Optional<Account> accountOptional = accountRepo.findByEmail(email);
-    if (accountOptional.isPresent()) {
-      Account account = accountOptional.get();
-      return account.getRoles();
-    }
-    throw new RuntimeException("User not found");
+    return accountRepo
+        .findByEmail(email)
+        .map(Account::getRoles)
+        .orElseThrow(() -> new BadRequestException("User not found"));
   }
 
   public Boolean verify(String token) {
