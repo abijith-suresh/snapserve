@@ -12,14 +12,7 @@ public class AddSpecialistDto {
 
   private String name;
   private String email;
-  private String phoneNumber;
+  private String phone;
   private String title;
-  private String bio;
-  private String price;
-  private double rating;
-  private String profileImage;
   private List<String> services;
-  private List<String> photos;
-  private int experience;
-  private String address;
 }

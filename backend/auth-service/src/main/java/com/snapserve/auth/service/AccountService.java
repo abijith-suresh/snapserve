@@ -3,8 +3,6 @@ package com.snapserve.auth.service;
 import com.snapserve.auth.config.JwtTokenProvider;
 import com.snapserve.auth.dto.LoginDto;
 import com.snapserve.auth.dto.RegisterDto;
-import com.snapserve.auth.dto.UpdateEmailDto;
-import com.snapserve.auth.dto.UpdatePasswordDto;
 import com.snapserve.auth.model.Account;
 import com.snapserve.auth.repo.AccountRepo;
 import java.util.Optional;
@@ -21,7 +19,6 @@ public class AccountService {
 
   @Autowired private JwtTokenProvider jwtTokenProvider;
 
-  // Convert DTO to Model
   private Account dtoToModel(RegisterDto registerDto) {
     Account account = new Account();
     account.setEmail(registerDto.getEmail());
@@ -30,7 +27,6 @@ public class AccountService {
     return account;
   }
 
-  // Register a new account, return Mono<String>
   public String register(RegisterDto registerDto) {
     if (accountRepo.findByEmail(registerDto.getEmail()).isPresent()) {
       throw new RuntimeException("Account with email already exists");
@@ -40,7 +36,6 @@ public class AccountService {
     return "User Registered Successfully";
   }
 
-  // Login method, return Mono<String> (JWT token)
   public String login(LoginDto loginDto) {
     Optional<Account> account = accountRepo.findByEmail(loginDto.getEmail());
     return account
@@ -49,7 +44,6 @@ public class AccountService {
         .orElseThrow(() -> new RuntimeException("Invalid Credentials"));
   }
 
-  // Get roles from email, return Mono<String> with roles
   public String getRolesFromEmail(String email) {
     Optional<Account> accountOptional = accountRepo.findByEmail(email);
     if (accountOptional.isPresent()) {
@@ -59,65 +53,12 @@ public class AccountService {
     throw new RuntimeException("User not found");
   }
 
-  // Verify token, return Mono<Boolean>
   public Boolean verify(String token) {
     return jwtTokenProvider.validateToken(token);
   }
 
-  // Get roles from the token, return Mono<String> with roles
   public String getRolesFromToken(String token) {
     String email = jwtTokenProvider.getUsernameFromToken(token);
     return getRolesFromEmail(email);
-  }
-
-  public void updatePassword(UpdatePasswordDto updatePasswordDto) {
-    Optional<Account> accountOptional = accountRepo.findByEmail(updatePasswordDto.getEmail());
-    if (accountOptional.isEmpty()) {
-      throw new RuntimeException("User not found");
-    }
-    Account account = accountOptional.get();
-
-    // Validate the old password
-    if (!passwordEncoder.matches(updatePasswordDto.getOldPassword(), account.getPassword())) {
-      throw new RuntimeException("Old password is incorrect");
-    }
-
-    // Update the password
-    account.setPassword(passwordEncoder.encode(updatePasswordDto.getNewPassword()));
-    accountRepo.save(account);
-  }
-
-  public void updateEmail(UpdateEmailDto updateEmailDto) {
-    // Fetch the account using the current email
-    Optional<Account> accountOptional = accountRepo.findByEmail(updateEmailDto.getCurrentEmail());
-    if (accountOptional.isEmpty()) {
-      throw new RuntimeException("User with the current email not found");
-    }
-
-    Account account = accountOptional.get();
-
-    // Verify if the password matches
-    if (!passwordEncoder.matches(updateEmailDto.getPassword(), account.getPassword())) {
-      throw new RuntimeException("Incorrect password");
-    }
-
-    // Check if the new email is already taken
-    if (accountRepo.findByEmail(updateEmailDto.getNewEmail()).isPresent()) {
-      throw new RuntimeException("The new email is already taken");
-    }
-
-    // Update the email
-    account.setEmail(updateEmailDto.getNewEmail());
-    accountRepo.save(account);
-  }
-
-  public void deleteAccountByEmail(String email) {
-    Optional<Account> accountOptional = accountRepo.findByEmail(email);
-    if (accountOptional.isEmpty()) {
-      throw new RuntimeException("Account with the given email does not exist");
-    }
-
-    Account account = accountOptional.get();
-    accountRepo.delete(account);
   }
 }

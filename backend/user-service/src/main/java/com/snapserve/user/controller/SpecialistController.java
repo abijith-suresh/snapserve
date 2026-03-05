@@ -1,7 +1,6 @@
 package com.snapserve.user.controller;
 
 import com.snapserve.user.dto.AddSpecialistDto;
-import com.snapserve.user.dto.EmailUpdateDto;
 import com.snapserve.user.dto.SpecialistDto;
 import com.snapserve.user.model.Specialist;
 import com.snapserve.user.service.SpecialistService;
@@ -52,35 +51,6 @@ public class SpecialistController {
   @DeleteMapping("/{id}")
   public ResponseEntity<Void> deleteSpecialist(@PathVariable String id) {
     specialistService.deleteSpecialist(new ObjectId(id));
-    return ResponseEntity.noContent().build();
-  }
-
-  @GetMapping("/email/{email}")
-  public ResponseEntity<SpecialistDto> getSpecialistByEmail(@PathVariable String email) {
-    SpecialistDto specialist = specialistService.findByEmail(email);
-    if (specialist == null) {
-      return ResponseEntity.notFound().build();
-    }
-    return ResponseEntity.ok(specialist);
-  }
-
-  @PutMapping("/{id}/update-email")
-  public ResponseEntity<Specialist> updateSpecialistEmail(
-      @PathVariable String id, @RequestBody EmailUpdateDto emailUpdateDto) {
-    SpecialistDto existing = specialistService.findByEmail(emailUpdateDto.getEmail());
-    if (existing != null) {
-      return ResponseEntity.status(HttpStatus.CONFLICT).build();
-    }
-    Specialist updated = specialistService.updateSpecialistEmail(new ObjectId(id), emailUpdateDto);
-    if (updated == null) {
-      return ResponseEntity.notFound().build();
-    }
-    return ResponseEntity.ok(updated);
-  }
-
-  @DeleteMapping("/email/{email}")
-  public ResponseEntity<Void> deleteSpecialistByEmail(@PathVariable String email) {
-    specialistService.deleteSpecialistByEmail(email);
     return ResponseEntity.noContent().build();
   }
 }

@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 public class RouteValidator {
 
   public static final List<String> OPEN_ENDPOINTS =
-      List.of("/api/auth/register", "/api/auth/login", "/api/auth/validate/token");
+      List.of("/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/validate/token");
 
   public boolean isSecured(String path) {
     return OPEN_ENDPOINTS.stream().noneMatch(path::equals);

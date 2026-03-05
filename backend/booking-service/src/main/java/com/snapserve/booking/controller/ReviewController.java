@@ -1,7 +1,6 @@
 package com.snapserve.booking.controller;
 
 import com.snapserve.booking.dto.ReviewDto;
-import com.snapserve.booking.dto.SpecialistReviewResponseDto;
 import com.snapserve.booking.model.Review;
 import com.snapserve.booking.service.ReviewService;
 import java.util.List;
@@ -45,16 +44,5 @@ public class ReviewController {
   public ResponseEntity<Void> deleteReview(@PathVariable String id) {
     reviewService.deleteReviewById(new ObjectId(id));
     return ResponseEntity.noContent().build();
-  }
-
-  @GetMapping("/customer/{customerId}/reviews")
-  public ResponseEntity<List<ReviewDto>> getReviewsByCustomer(@PathVariable String customerId) {
-    return ResponseEntity.ok(reviewService.getReviewsByCustomer(new ObjectId(customerId)));
-  }
-
-  @GetMapping("/specialist/{specialistId}/reviews")
-  public ResponseEntity<List<SpecialistReviewResponseDto>> getReviewsForSpecialist(
-      @PathVariable String specialistId) {
-    return ResponseEntity.ok(reviewService.getReviewsForSpecialist(new ObjectId(specialistId)));
   }
 }
