@@ -49,23 +49,4 @@ public class BookingController {
     bookingService.deleteBooking(new ObjectId(id));
     return ResponseEntity.noContent().build();
   }
-
-  @GetMapping("/customer/{customerId}")
-  public ResponseEntity<List<BookingResponseDto>> getBookingsByCustomerId(
-      @PathVariable String customerId) {
-    return ResponseEntity.ok(bookingService.getBookingsByCustomerId(new ObjectId(customerId)));
-  }
-
-  @GetMapping("/specialist/{specialistId}")
-  public ResponseEntity<List<BookingResponseDto>> getBookingsBySpecialistId(
-      @PathVariable String specialistId) {
-    return ResponseEntity.ok(bookingService.getBookingsBySpecialistId(new ObjectId(specialistId)));
-  }
-
-  @PutMapping("/{id}/status")
-  public ResponseEntity<Void> updateBookingStatus(
-      @PathVariable String id, @RequestParam String status) {
-    bookingService.updateBookingStatus(new ObjectId(id), status);
-    return ResponseEntity.ok().build();
-  }
 }

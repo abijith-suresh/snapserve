@@ -19,10 +19,7 @@ public class Booking {
   private ObjectId customerId;
   private ObjectId specialistId;
 
-  private LocalDateTime bookingDate;
   private LocalDateTime appointmentTime;
   private String service;
-
   private String status;
-  private String price;
 }

@@ -12,10 +12,7 @@ public class AddBookingDto {
   private String customerId;
   private String specialistId;
 
-  private LocalDateTime bookingDate;
   private LocalDateTime appointmentTime;
   private String service;
-
   private String status;
-  private String price;
 }
