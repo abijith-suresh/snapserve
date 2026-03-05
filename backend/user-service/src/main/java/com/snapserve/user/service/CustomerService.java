@@ -1,8 +1,8 @@
 package com.snapserve.user.service;
 
-import com.snapserve.user.dto.CustomerDto;
 import com.snapserve.user.model.Customer;
 import com.snapserve.user.repo.CustomerRepository;
+import com.snapserve.userclient.dto.CustomerDto;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.bson.types.ObjectId;

@@ -2,29 +2,24 @@ package com.snapserve.booking.service;
 
 import com.snapserve.booking.dto.AddBookingDto;
 import com.snapserve.booking.dto.BookingResponseDto;
-import com.snapserve.booking.dto.CustomerDto;
-import com.snapserve.booking.dto.SpecialistDto;
 import com.snapserve.booking.model.Booking;
 import com.snapserve.booking.repo.BookingRepository;
+import com.snapserve.userclient.client.UserServiceClient;
+import com.snapserve.userclient.dto.CustomerDto;
+import com.snapserve.userclient.dto.SpecialistDto;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClient;
-import org.springframework.web.client.RestClientException;
 
 @Service
 public class BookingService {
 
-  @Value("${user.service.url}")
-  private String userServiceUrl;
-
   @Autowired private BookingRepository bookingRepo;
 
-  @Autowired private RestClient.Builder restClientBuilder;
+  @Autowired private UserServiceClient userServiceClient;
 
   private Booking dtoToModel(AddBookingDto bookingDto) {
     Booking booking = new Booking();
@@ -74,26 +69,16 @@ public class BookingService {
 
   CustomerDto fetchCustomer(String id) {
     try {
-      return restClientBuilder
-          .build()
-          .get()
-          .uri(userServiceUrl + "/api/v1/customers/{id}", id)
-          .retrieve()
-          .body(CustomerDto.class);
-    } catch (RestClientException e) {
+      return userServiceClient.getCustomerById(id);
+    } catch (Exception e) {
       return null;
     }
   }
 
   SpecialistDto fetchSpecialist(String id) {
     try {
-      return restClientBuilder
-          .build()
-          .get()
-          .uri(userServiceUrl + "/api/v1/specialists/{id}", id)
-          .retrieve()
-          .body(SpecialistDto.class);
-    } catch (RestClientException e) {
+      return userServiceClient.getSpecialistById(id);
+    } catch (Exception e) {
       return null;
     }
   }
