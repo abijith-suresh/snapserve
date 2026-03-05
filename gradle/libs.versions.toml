@@ -1,7 +1,7 @@
 [versions]
 spring-boot  = "4.0.3"
 spring-cloud = "2025.1.1"
-jjwt         = "0.12.6"
+jjwt         = "0.13.0"
 lombok       = "1.18.36"
 spotless     = "7.0.2"
 
