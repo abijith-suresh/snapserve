@@ -17,8 +17,8 @@ export default function BrowseSpecialists() {
           <Card key={specialist.id}>
             <CardContent className="p-4">
               <h3 className="font-semibold text-lg">{specialist.name}</h3>
-              <p className="text-gray-600">{specialist.title}</p>
-              <p className="text-sm text-gray-500 mb-3">Rating: {specialist.rating}/5</p>
+              <p className="text-slate-600">{specialist.title}</p>
+              <p className="text-sm text-slate-500 mb-3">Rating: {specialist.rating}/5</p>
               <Link to={`/specialists/${specialist.id}`}>
                 <Button variant="outline" size="sm">
                   View Profile

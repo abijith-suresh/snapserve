@@ -47,11 +47,12 @@ function ProfileRedirect() {
 }
 
 const router = createBrowserRouter([
+  // Landing page — standalone, own navbar/footer
+  { path: '/', element: <HomePage /> },
+  // Public pages under RootLayout
   {
-    path: '/',
     element: <RootLayout />,
     children: [
-      { index: true, element: <HomePage /> },
       { path: 'login', element: <LoginPage /> },
       { path: 'signup', element: <SignupPage /> },
       { path: 'specialists', element: <BrowseSpecialists /> },

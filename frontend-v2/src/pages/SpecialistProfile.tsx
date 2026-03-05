@@ -10,7 +10,7 @@ export default function SpecialistProfile() {
     <div>
       <Link
         to="/specialists"
-        className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-4"
+        className="inline-flex items-center text-sm text-slate-600 hover:text-slate-900 mb-4"
       >
         <ArrowLeft className="h-4 w-4 mr-1" />
         Back to Browse
@@ -22,7 +22,7 @@ export default function SpecialistProfile() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <p className="text-gray-600">Specialist ID: {id}</p>
+            <p className="text-slate-600">Specialist ID: {id}</p>
             <p className="mt-2">This is a public specialist profile page.</p>
           </div>
 

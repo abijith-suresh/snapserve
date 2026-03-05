@@ -14,14 +14,15 @@ export default function CustomerLayout() {
   const location = useLocation()
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-slate-50">
       {/* Sidebar */}
       <div className="w-64 bg-white border-r flex flex-col">
         <div className="p-4 border-b">
           <Link to="/customer/dashboard" className="font-bold text-xl">
-            SnapServe
+            <span className="text-slate-900">Snap</span>
+            <span className="text-emerald-600">Serve</span>
           </Link>
-          <p className="text-sm text-gray-500 mt-1">Customer Portal</p>
+          <p className="text-sm text-slate-500 mt-1">Customer Portal</p>
         </div>
 
         <nav className="flex-1 p-4 space-y-1">
@@ -33,7 +34,7 @@ export default function CustomerLayout() {
                 key={item.name}
                 to={item.href}
                 className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  isActive ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-100'
+                  isActive ? 'bg-emerald-50 text-emerald-600' : 'text-slate-700 hover:bg-slate-100'
                 }`}
               >
                 <Icon className="h-5 w-5" />
@@ -45,17 +46,17 @@ export default function CustomerLayout() {
 
         <div className="p-4 border-t">
           <div className="flex items-center gap-3 mb-3">
-            <div className="h-8 w-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-medium">
+            <div className="h-8 w-8 rounded-full bg-emerald-600 text-white flex items-center justify-center text-sm font-medium">
               {user?.email?.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">{user?.email}</p>
-              <p className="text-xs text-gray-500">Customer</p>
+              <p className="text-sm font-medium text-slate-900 truncate">{user?.email}</p>
+              <p className="text-xs text-slate-500">Customer</p>
             </div>
           </div>
           <button
             onClick={logout}
-            className="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            className="w-full px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
           >
             Logout
           </button>

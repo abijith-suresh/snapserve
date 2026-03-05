@@ -99,9 +99,9 @@ export default function SignupPage() {
             <Button type="submit" className="w-full">
               Create Account
             </Button>
-            <p className="text-center text-sm text-gray-600">
+            <p className="text-center text-sm text-slate-600">
               Already have an account?{' '}
-              <Link to="/login" className="text-blue-600 hover:underline">
+              <Link to="/login" className="text-emerald-600 hover:underline">
                 Sign in
               </Link>
             </p>
