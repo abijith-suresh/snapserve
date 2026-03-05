@@ -1,5 +1,7 @@
 package com.snapserve.booking.dto;
 
+import com.snapserve.userclient.dto.CustomerDto;
+import com.snapserve.userclient.dto.SpecialistDto;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Data;

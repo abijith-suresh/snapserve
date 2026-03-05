@@ -1,10 +1,10 @@
 package com.snapserve.booking.service;
 
-import com.snapserve.booking.dto.CustomerDto;
 import com.snapserve.booking.dto.ReviewDto;
 import com.snapserve.booking.dto.SpecialistReviewResponseDto;
 import com.snapserve.booking.model.Review;
 import com.snapserve.booking.repo.ReviewRepository;
+import com.snapserve.userclient.dto.CustomerDto;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.bson.types.ObjectId;
