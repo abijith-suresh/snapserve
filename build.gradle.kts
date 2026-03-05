@@ -15,6 +15,10 @@ subprojects {
             mavenCentral()
         }
 
+        tasks.withType<Test> {
+            useJUnitPlatform()
+        }
+
         apply(plugin = "com.diffplug.spotless")
         extensions.configure<com.diffplug.gradle.spotless.SpotlessExtension> {
             java {
