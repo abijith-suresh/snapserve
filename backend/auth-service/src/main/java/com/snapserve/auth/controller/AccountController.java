@@ -2,8 +2,6 @@ package com.snapserve.auth.controller;
 
 import com.snapserve.auth.dto.LoginDto;
 import com.snapserve.auth.dto.RegisterDto;
-import com.snapserve.auth.dto.UpdateEmailDto;
-import com.snapserve.auth.dto.UpdatePasswordDto;
 import com.snapserve.auth.service.AccountService;
 import java.util.HashMap;
 import java.util.Map;
@@ -13,7 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/api/v1/auth")
 public class AccountController {
 
   @Autowired private AccountService accountService;
@@ -50,36 +48,6 @@ public class AccountController {
       return ResponseEntity.ok(response);
     } catch (Exception e) {
       return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", e.getMessage()));
-    }
-  }
-
-  @PutMapping("/update/password")
-  public ResponseEntity<String> updatePassword(@RequestBody UpdatePasswordDto updatePasswordDto) {
-    try {
-      accountService.updatePassword(updatePasswordDto);
-      return ResponseEntity.ok("Password updated successfully");
-    } catch (RuntimeException e) {
-      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-    }
-  }
-
-  @PutMapping("/update/email")
-  public ResponseEntity<String> updateEmail(@RequestBody UpdateEmailDto updateEmailDto) {
-    try {
-      accountService.updateEmail(updateEmailDto);
-      return ResponseEntity.ok("Email updated successfully");
-    } catch (RuntimeException e) {
-      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-    }
-  }
-
-  @DeleteMapping("/delete")
-  public ResponseEntity<String> deleteAccount(@RequestParam String email) {
-    try {
-      accountService.deleteAccountByEmail(email);
-      return ResponseEntity.ok("Account deleted successfully");
-    } catch (RuntimeException e) {
-      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
     }
   }
 }
