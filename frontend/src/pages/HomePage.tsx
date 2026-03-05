@@ -1,21 +1,21 @@
+import {
+  CheckCircle,
+  Hammer,
+  Leaf,
+  Menu,
+  Paintbrush,
+  Sparkles,
+  Star,
+  Truck,
+  Wind,
+  Wrench,
+  X,
+  Zap,
+} from 'lucide-react'
 import type { ComponentType } from 'react'
 import { useState } from 'react'
 import { Link, Navigate } from 'react-router'
 import { useAuthStore } from '@/features/auth/store'
-import {
-  Wrench,
-  Zap,
-  Hammer,
-  Sparkles,
-  Paintbrush,
-  Wind,
-  Leaf,
-  Truck,
-  Star,
-  Menu,
-  X,
-  CheckCircle,
-} from 'lucide-react'
 
 interface ServiceCategory {
   label: string

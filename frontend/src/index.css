@@ -1,7 +1,7 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
 @theme {
-  --font-sans: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
   --color-primary: oklch(0.45 0.15 160);
   --color-primary-foreground: oklch(0.99 0 0);
   --color-secondary: oklch(0.95 0.02 160);

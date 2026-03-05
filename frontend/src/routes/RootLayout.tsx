@@ -1,6 +1,6 @@
-import { Outlet, Link } from 'react-router'
+import { LayoutDashboard, Search } from 'lucide-react'
+import { Link, Outlet } from 'react-router'
 import { useAuthStore } from '@/features/auth/store'
-import { Search, LayoutDashboard } from 'lucide-react'
 
 export default function RootLayout() {
   const { isAuthenticated, logout } = useAuthStore()
