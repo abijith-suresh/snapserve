@@ -3,7 +3,6 @@ package com.snapserve.user.controller;
 import com.snapserve.user.dto.AddSpecialistDto;
 import com.snapserve.user.dto.EmailUpdateDto;
 import com.snapserve.user.dto.SpecialistDto;
-import com.snapserve.user.dto.StatusUpdateDto;
 import com.snapserve.user.model.Specialist;
 import com.snapserve.user.service.SpecialistService;
 import java.util.List;
@@ -18,15 +17,6 @@ import org.springframework.web.bind.annotation.*;
 public class SpecialistController {
 
   @Autowired private SpecialistService specialistService;
-
-  private static final String[] VALID_STATUSES = {"pending", "approved", "rejected"};
-
-  private boolean isValidStatus(String status) {
-    for (String s : VALID_STATUSES) {
-      if (s.equalsIgnoreCase(status)) return true;
-    }
-    return false;
-  }
 
   @GetMapping("/")
   public ResponseEntity<List<SpecialistDto>> getAllSpecialists() {
@@ -91,29 +81,6 @@ public class SpecialistController {
   @DeleteMapping("/email/{email}")
   public ResponseEntity<Void> deleteSpecialistByEmail(@PathVariable String email) {
     specialistService.deleteSpecialistByEmail(email);
-    return ResponseEntity.noContent().build();
-  }
-
-  @GetMapping("/status")
-  public ResponseEntity<List<SpecialistDto>> getSpecialistsByStatus(
-      @RequestParam(name = "status", required = false) String status) {
-    if (status == null || status.isBlank()) {
-      return ResponseEntity.ok(specialistService.getAllSpecialists());
-    }
-    String normalized = status.trim().toLowerCase();
-    if (!isValidStatus(normalized)) {
-      return ResponseEntity.badRequest().build();
-    }
-    return ResponseEntity.ok(specialistService.getSpecialistsByStatus(normalized));
-  }
-
-  @PatchMapping("/{id}/status")
-  public ResponseEntity<Void> updateSpecialistStatus(
-      @PathVariable String id, @RequestBody StatusUpdateDto statusUpdateDto) {
-    if (!isValidStatus(statusUpdateDto.getStatus())) {
-      return ResponseEntity.badRequest().build();
-    }
-    specialistService.updateSpecialistStatus(new ObjectId(id), statusUpdateDto.getStatus());
     return ResponseEntity.noContent().build();
   }
 }
