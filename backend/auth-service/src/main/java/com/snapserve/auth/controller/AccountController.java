@@ -1,9 +1,10 @@
 package com.snapserve.auth.controller;
 
 import com.snapserve.auth.dto.LoginDto;
+import com.snapserve.auth.dto.LoginResponse;
 import com.snapserve.auth.dto.RegisterDto;
 import com.snapserve.auth.service.AccountService;
-import java.util.HashMap;
+import com.snapserve.common.response.ApiResponse;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -17,37 +18,28 @@ public class AccountController {
   @Autowired private AccountService accountService;
 
   @PostMapping("/register")
-  public ResponseEntity<String> register(@RequestBody RegisterDto registerDto) {
-    try {
-      String response = accountService.register(registerDto);
-      return ResponseEntity.ok(response);
-    } catch (RuntimeException e) {
-      return ResponseEntity.badRequest().body(e.getMessage());
-    }
+  public ResponseEntity<ApiResponse<Void>> register(@RequestBody RegisterDto registerDto) {
+    accountService.register(registerDto);
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(ApiResponse.ok("User registered successfully"));
   }
 
   @PostMapping("/login")
-  public ResponseEntity<String> login(@RequestBody LoginDto loginDto) {
-    return ResponseEntity.ok(accountService.login(loginDto));
+  public ResponseEntity<ApiResponse<LoginResponse>> login(@RequestBody LoginDto loginDto) {
+    String token = accountService.login(loginDto);
+    return ResponseEntity.ok(ApiResponse.ok(new LoginResponse(token)));
   }
 
   @GetMapping("/validate/token")
-  public ResponseEntity<Boolean> validateToken(@RequestParam String token) {
-    return ResponseEntity.ok(accountService.verify(token));
+  public ResponseEntity<ApiResponse<Boolean>> validateToken(@RequestParam String token) {
+    return ResponseEntity.ok(ApiResponse.ok(accountService.verify(token)));
   }
 
   @GetMapping("/extract/roles")
-  public ResponseEntity<Map<String, Object>> extractRolesFromToken(@RequestParam String token) {
-    try {
-      if (!accountService.verify(token)) {
-        throw new RuntimeException("Invalid or Expired Token");
-      }
-      String roles = accountService.getRolesFromToken(token);
-      Map<String, Object> response = new HashMap<>();
-      response.put("roles", roles);
-      return ResponseEntity.ok(response);
-    } catch (Exception e) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", e.getMessage()));
-    }
+  public ResponseEntity<ApiResponse<Map<String, String>>> extractRolesFromToken(
+      @RequestParam String token) {
+    accountService.verify(token);
+    String roles = accountService.getRolesFromToken(token);
+    return ResponseEntity.ok(ApiResponse.ok(Map.of("roles", roles)));
   }
 }

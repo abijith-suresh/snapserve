@@ -1,4 +1,4 @@
-package com.snapserve.gateway.filter;
+package com.snapserve.common.jwt;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -10,7 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
-public class JwtTokenValidator {
+public class JwtUtils {
 
   @Value("${jwt.secret}")
   private String jwtSecret;
@@ -33,5 +33,9 @@ public class JwtTokenValidator {
     } catch (Exception e) {
       return false;
     }
+  }
+
+  public SecretKey getSigningKey() {
+    return signingKey;
   }
 }
