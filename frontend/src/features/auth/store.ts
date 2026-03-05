@@ -16,7 +16,7 @@ export const useAuthStore = create<AuthStore>()(
       isAuthenticated: false,
       login: (email, role) => {
         set({
-          user: { id: '1', email, role: role as any },
+          user: { id: '1', email, role: role as 'customer' | 'specialist' },
           isAuthenticated: true,
         })
       },
