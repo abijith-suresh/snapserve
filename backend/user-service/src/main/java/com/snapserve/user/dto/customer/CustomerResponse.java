@@ -1,8 +1,8 @@
-package com.snapserve.userclient.dto;
+package com.snapserve.user.dto.customer;
 
 import java.time.Instant;
 
-public record CustomerDto(
+public record CustomerResponse(
     String id,
     String email,
     String name,

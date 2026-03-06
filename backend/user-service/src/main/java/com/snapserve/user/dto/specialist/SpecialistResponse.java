@@ -1,10 +1,10 @@
-package com.snapserve.userclient.dto;
+package com.snapserve.user.dto.specialist;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
-public record SpecialistDto(
+public record SpecialistResponse(
     String id,
     String email,
     String name,
