@@ -67,7 +67,7 @@ public class ReviewService {
             review -> {
               CustomerDto customer =
                   bookingService.fetchCustomer(review.getCustomerId().toString());
-              String authorName = customer != null ? customer.getName() : "Unknown";
+              String authorName = customer != null ? customer.name() : "Unknown";
               return new SpecialistReviewResponseDto(
                   authorName, review.getRating(), review.getComment(), review.getCreatedAt());
             })
