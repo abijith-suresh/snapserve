@@ -32,6 +32,7 @@ public class UserService {
     }
 
     UserEntity user = userMapper.toCustomerEntity(request);
+    user.setRole(Role.CUSTOMER);
     user.setVerified(true);
     user = userRepository.save(user);
 
@@ -45,6 +46,7 @@ public class UserService {
     }
 
     UserEntity user = userMapper.toSpecialistEntity(request);
+    user.setRole(Role.SPECIALIST);
     user.setVerified(false);
     user = userRepository.save(user);
 

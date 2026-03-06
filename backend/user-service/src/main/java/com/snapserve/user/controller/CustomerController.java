@@ -69,33 +69,4 @@ public class CustomerController {
     log.info("Customer deleted via API: {}", id);
     return ResponseEntity.noContent().build();
   }
-
-  @PostMapping
-  @Operation(summary = "Create customer", description = "Create a new customer account")
-  public ResponseEntity<ApiResponse<CustomerResponse>> createCustomer(
-      @Valid @RequestBody CustomerRequest request) {
-    CustomerResponse response = userService.createCustomer(request);
-    log.info("Customer created via API: {}", request.email());
-    return ResponseEntity.status(HttpStatus.CREATED)
-        .body(ApiResponse.ok("Customer created successfully", response));
-  }
-
-  @PutMapping("/{id}")
-  @Operation(summary = "Update customer", description = "Update an existing customer")
-  public ResponseEntity<ApiResponse<CustomerResponse>> updateCustomer(
-      @Parameter(description = "Customer ID") @PathVariable String id,
-      @Valid @RequestBody CustomerRequest request) {
-    CustomerResponse response = userService.updateCustomer(id, request);
-    log.info("Customer updated via API: {}", request.email());
-    return ResponseEntity.ok(ApiResponse.ok("Customer updated successfully", response));
-  }
-
-  @DeleteMapping("/{id}")
-  @Operation(summary = "Delete customer", description = "Delete a customer by ID")
-  public ResponseEntity<ApiResponse<Void>> deleteCustomer(
-      @Parameter(description = "Customer ID") @PathVariable String id) {
-    userService.deleteCustomer(id);
-    log.info("Customer deleted via API: {}", id);
-    return ResponseEntity.noContent().build();
-  }
 }

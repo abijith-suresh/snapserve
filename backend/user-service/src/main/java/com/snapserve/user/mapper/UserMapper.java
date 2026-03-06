@@ -17,10 +17,16 @@ import org.mapstruct.ReportingPolicy;
     nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
 public interface UserMapper {
 
-  @Mapping(target = "role", constant = "CUSTOMER")
+  @Mapping(target = "role", ignore = true)
+  @Mapping(target = "id", ignore = true)
+  @Mapping(target = "createdAt", ignore = true)
+  @Mapping(target = "updatedAt", ignore = true)
   UserEntity toCustomerEntity(CustomerRequest request);
 
-  @Mapping(target = "role", constant = "SPECIALIST")
+  @Mapping(target = "role", ignore = true)
+  @Mapping(target = "id", ignore = true)
+  @Mapping(target = "createdAt", ignore = true)
+  @Mapping(target = "updatedAt", ignore = true)
   UserEntity toSpecialistEntity(SpecialistRequest request);
 
   @Mapping(target = "id", expression = "java(entity.getId().toString())")

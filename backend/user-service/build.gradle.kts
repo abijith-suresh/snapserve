@@ -20,8 +20,10 @@ dependencies {
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0")
     implementation("net.logstash.logback:logstash-logback-encoder:7.4")
     implementation("org.mapstruct:mapstruct:1.5.5.Final")
-    annotationProcessor("org.mapstruct:mapstruct-processor:1.5.5.Final")
+    compileOnly("org.projectlombok:lombok-mapstruct-binding:0.2.0")
     compileOnly(libs.lombok)
+    annotationProcessor("org.mapstruct:mapstruct-processor:1.5.5.Final")
+    annotationProcessor("org.projectlombok:lombok-mapstruct-binding:0.2.0")
     annotationProcessor(libs.lombok)
     testImplementation(libs.spring.boot.starter.test)
 }
