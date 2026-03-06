@@ -1,199 +1,132 @@
 # Shared Libraries
 
-Common modules shared across all backend services.
+Common code shared across microservices.
 
 ## Overview
 
-Two shared modules provide common functionality:
-- **common**: Core utilities, exceptions, JWT handling
-- **user-service-client**: Feign client for user-service integration
+The `common` module and `user-service-client` module provide shared functionality to avoid code duplication across services.
 
 ## Common Module
 
-Located at: `backend/common/`
+**Location**: `backend/common/`
 
-### Purpose
+Auto-configured Spring Boot library used by all services.
 
-Provides shared code that all services depend on:
-- Base entity classes (Auditable)
-- Common enums (Role)
-- JWT utilities
-- Exception hierarchy
-- Standardized API responses
-- Auto-configuration
+### Provided Components
 
-### Key Components
+**Base Classes**
+- `Auditable` — Base entity with createdAt/updatedAt timestamps
+- Extend this class for all entities that need audit fields
 
-#### Auditable Base Class
+**Response Wrappers**
+- `ApiResponse<T>` — Standard success response wrapper
+- `ErrorResponse` — Standard error response
+- `FieldValidationError` — Validation error details
 
-```java
-@Data
-public abstract class Auditable {
-    @CreatedDate private Instant createdAt;
-    @LastModifiedDate private Instant updatedAt;
-}
-```
+All controllers return `ApiResponse<T>` for consistency.
 
-Extend this for automatic timestamp tracking.
+**Exceptions**
+- `ApiException` — Base exception class
+- `ResourceNotFoundException` — 404 errors
+- `BadRequestException` — 400 errors
+- `ConflictException` — 409 errors
+- `UnauthorizedException` — 401 errors
+- `AccessDeniedException` — 403 errors
 
-#### Role Enum
+Use these exceptions instead of returning null or error codes.
 
-```java
-public enum Role {
-    CUSTOMER,
-    SPECIALIST
-}
-```
+**Global Exception Handler**
+- `GlobalExceptionHandler` — Catches exceptions and converts to ErrorResponse
+- Auto-registered via Spring Boot auto-configuration
+- No manual configuration needed
 
-#### JWT Utilities
+**JWT Utilities**
+- `JwtUtils` — Token parsing and validation
+- Used by API Gateway for token validation
+- Used by services to extract user info from tokens
 
-`JwtUtils` provides token validation and parsing:
-
-```java
-@Component
-public class JwtUtils {
-    public Claims extractClaims(String token);
-    public boolean isValid(String token);
-    public SecretKey getSigningKey();
-}
-```
-
-#### Exception Hierarchy
-
-| Exception | HTTP Status | Use Case |
-|-----------|-------------|----------|
-| `ApiException` | - | Base class |
-| `BadRequestException` | 400 | Invalid input |
-| `ConflictException` | 409 | Resource conflict |
-| `ResourceNotFoundException` | 404 | Not found |
-| `AccountLockedException` | 403 | Locked account |
-| `InvalidRefreshTokenException` | 401 | Invalid refresh token |
-
-#### API Response Wrapper
-
-```java
-public class ApiResponse<T> {
-    private boolean success;
-    private String message;
-    private T data;
-    private List<FieldValidationError> errors;
-}
-```
-
-Usage:
-```java
-return ResponseEntity.ok(ApiResponse.ok(data));
-return ResponseEntity.ok(ApiResponse.ok("Message", data));
-```
-
-#### Global Exception Handler
-
-`GlobalExceptionHandler` catches all exceptions and returns standardized error responses with proper HTTP status codes.
-
-### Dependency
-
-```kotlin
-// In service build.gradle.kts
-dependencies {
-    implementation(project(":backend:common"))
-}
-```
-
-## User Service Client Module
-
-Located at: `backend/user-service-client/`
-
-### Purpose
-
-Feign client for inter-service communication with user-service. Used by booking-service to validate users.
-
-### Components
-
-#### Feign Client
-
-```java
-@FeignClient(name = "user-service", url = "${user.service.url}")
-public interface UserServiceClient {
-    @GetMapping("/api/v1/customers/{id}")
-    CustomerResponse getCustomerById(@PathVariable("id") String id);
-
-    @GetMapping("/api/v1/specialists/{id}")
-    SpecialistResponse getSpecialistById(@PathVariable("id") String id);
-}
-```
-
-#### DTOs
-
-**CustomerRequest / CustomerResponse:**
-- `email`: String
-- `name`: String
-- `phone`: String
-- `address`: String
-- `preferredPaymentMethod`: String
-
-**SpecialistRequest / SpecialistResponse:**
-- `email`: String
-- `name`: String
-- `phone`: String
-- `address`: String
-- `title`: String
-- `services`: List<String>
-- `hourlyRate`: BigDecimal
-- `verified`: Boolean
-
-### Auto-Configuration
-
-Enabled via `spring.factories`:
-```
-org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
-  com.snapserve.userclient.config.UserServiceClientAutoConfiguration
-```
-
-Services using this client must add the dependency and configure `user.service.url`.
-
-### Dependency
-
-```kotlin
-// In service build.gradle.kts
-dependencies {
-    implementation(project(":backend:user-service-client"))
-}
-```
+**Auto-Configuration**
+- `CommonAutoConfiguration` — Automatically configures all components
+- Enabled via `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`
+- Services just add the dependency, no manual config needed
 
 ### Usage
 
-```java
-@Service
-@RequiredArgsConstructor
-public class BookingService {
-    private final UserServiceClient userServiceClient;
-    
-    public void createBooking(BookingDto dto) {
-        // Validate customer exists
-        CustomerResponse customer = userServiceClient.getCustomerById(dto.getCustomerId());
-        // ...
-    }
-}
-```
+Add to service dependencies in `build.gradle.kts`.
 
-## Building
+All components are automatically available.
 
-```bash
-# Build common module
-./gradlew :backend:common:build
+## User Service Client
 
-# Build user-service-client
-./gradlew :backend:user-service-client:build
+**Location**: `backend/user-service-client/`
 
-# Publish to local Maven (if needed by other projects)
-./gradlew :backend:common:publishToMavenLocal
-./gradlew :backend:user-service-client:publishToMavenLocal
-```
+Feign Client for calling User Service from other services.
+
+### Purpose
+
+Provides type-safe HTTP client for User Service APIs:
+- Get customer by ID
+- Get specialist by ID
+- Check if user exists
+- Validate user data
+
+### Usage
+
+**1. Add dependency** to `build.gradle.kts`
+
+**2. Enable Feign Clients** — Add `@EnableFeignClients` to main application class
+
+**3. Inject and use** — Inject `UserServiceClient` into your service
+
+See `backend/booking-service` for example usage in `BookingService`.
+
+### Configuration
+
+Environment variable:
+- `USER_SERVICE_URL` — User service URL (e.g., `http://user-service:9001`)
+
+### Error Handling
+
+The client throws exceptions on failures:
+- `ResourceNotFoundException` — User not found
+- `FeignException` — Communication errors
+
+Always wrap calls in try-catch and handle appropriately.
+
+## Benefits
+
+**Common Module:**
+- Consistent API responses across all services
+- Standardized error handling
+- No code duplication for base classes
+- Centralized JWT utilities
+
+**User Service Client:**
+- Type-safe API calls
+- No manual HTTP client setup
+- Consistent error handling
+- Easy to mock for testing
 
 ## Best Practices
 
-1. **Keep common lean**: Only truly shared code belongs here
-2. **Version carefully**: Changes affect all services
-3. **No service-specific code**: This is a library, not a service
-4. **Document breaking changes**: Use semantic versioning
-5. **Test thoroughly**: Bugs here affect everything
+**When to add to Common:**
+- Base classes used by multiple services
+- Shared exception types
+- Utility classes (JWT, validation)
+- Response wrappers
+
+**When NOT to add to Common:**
+- Service-specific logic
+- Business rules
+- Service-specific DTOs
+
+**When to create a new client:**
+- Multiple services call the same service
+- API surface is stable
+- Type safety is important
+
+## Links
+
+- Common module: `backend/common/`
+- User service client: `backend/user-service-client/`
+- Feign integration: `backend/booking-service/` (example usage)

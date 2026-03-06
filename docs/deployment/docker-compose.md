@@ -1,245 +1,248 @@
-# Docker Compose Deployment
+# Docker Compose
 
-Local development and deployment using Docker Compose.
+Local development with Docker Compose.
 
 ## Overview
 
-The `docker-compose.yml` file defines all services for local development. Services communicate via Docker network.
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────┐
-│                  Docker Network                      │
-│  snapserve-network (bridge)                         │
-│                                                     │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐          │
-│  │  MongoDB │  │  Auth    │  │  User    │          │
-│  │  :27017  │  │  :9000   │  │  :9001   │          │
-│  └──────────┘  └──────────┘  └──────────┘          │
-│                                                     │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐          │
-│  │ Booking  │  │  Notify  │  │  Gateway │◀─:9090   │
-│  │  :9002   │  │  :9003   │  │  :9090   │   External│
-│  └──────────┘  └──────────┘  └──────────┘          │
-└─────────────────────────────────────────────────────┘
-```
+Docker Compose orchestrates all services locally:
+- MongoDB database
+- 5 Spring Boot microservices
+- Reverse proxy (optional)
 
 ## Services
 
-### MongoDB (Optional)
-
-```yaml
-mongo:
-  image: mongo:7-jammy
-  container_name: snapserve-mongo
-  environment:
-    MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-admin}
-    MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-password}
-  ports:
-    - '27017:27017'
-  volumes:
-    - mongo_data:/data/db
-  healthcheck:
-    test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
-```
-
-Disable if using MongoDB Atlas. Update `MONGODB_URI` in `.env`.
-
-### Auth Service
-
-```yaml
-auth-service:
-  build:
-    context: .
-    dockerfile: backend/auth-service/Dockerfile
-  environment:
-    MONGODB_URI: ${MONGODB_URI}
-    JWT_SECRET: ${JWT_SECRET}
-  ports:
-    - '9000:9000'
-  depends_on:
-    mongo:
-      condition: service_healthy
-```
-
-### User Service
-
-```yaml
-user-service:
-  build:
-    context: .
-    dockerfile: backend/user-service/Dockerfile
-  environment:
-    MONGODB_URI: ${MONGODB_URI}
-    NOTIFICATION_SERVICE_URL: http://notification-service:9003
-  ports:
-    - '9001:9001'
-  depends_on:
-    mongo:
-      condition: service_healthy
-    notification-service:
-      condition: service_started
-```
-
-### Booking Service
-
-```yaml
-booking-service:
-  build:
-    context: .
-    dockerfile: backend/booking-service/Dockerfile
-  environment:
-    MONGODB_URI: ${MONGODB_URI}
-    USER_SERVICE_URL: http://user-service:9001
-    NOTIFICATION_SERVICE_URL: http://notification-service:9003
-  ports:
-    - '9002:9002'
-  depends_on:
-    mongo:
-      condition: service_healthy
-    user-service:
-      condition: service_started
-    notification-service:
-      condition: service_started
-```
-
-### Notification Service
-
-```yaml
-notification-service:
-  build:
-    context: .
-    dockerfile: backend/notification-service/Dockerfile
-  environment:
-    GMAIL_USERNAME: ${GMAIL_USERNAME}
-    GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD}
-  ports:
-    - '9003:9003'
-```
-
-### API Gateway
-
-```yaml
-api-gateway:
-  build:
-    context: .
-    dockerfile: backend/api-gateway/Dockerfile
-  environment:
-    AUTH_SERVICE_URL: http://auth-service:9000
-    USER_SERVICE_URL: http://user-service:9001
-    BOOKING_SERVICE_URL: http://booking-service:9002
-    NOTIFICATION_SERVICE_URL: http://notification-service:9003
-    JWT_SECRET: ${JWT_SECRET}
-    ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
-  ports:
-    - '9090:9090'
-  depends_on:
-    auth-service:
-      condition: service_started
-    user-service:
-      condition: service_started
-    booking-service:
-      condition: service_started
-    notification-service:
-      condition: service_started
-```
+| Service | Port | Description |
+|---------|------|-------------|
+| mongo | 27017 | MongoDB database |
+| auth-service | 9000 | Authentication |
+| user-service | 9001 | User profiles |
+| booking-service | 9002 | Bookings and reviews |
+| notification-service | 9003 | Email notifications |
+| api-gateway | 9090 | API entry point |
 
 ## Quick Start
 
+### Prerequisites
+
+- Docker and Docker Compose installed
+- `.env` file created from `.env.example`
+- At least 4GB RAM available
+
+### Start All Services
+
 ```bash
-# 1. Copy environment file
-cp .env.example .env
-
-# 2. Edit .env with your values
-# - MONGODB_URI (or use local MongoDB)
-# - JWT_SECRET (≥64 characters)
-# - GMAIL credentials (for notifications)
-
-# 3. Start all services
 docker compose up --build
-
-# 4. Or start in background
-docker compose up -d --build
-
-# 5. View logs
-docker compose logs -f
-
-# 6. Stop services
-docker compose down
-
-# 7. Stop and remove volumes (WARNING: deletes data)
-docker compose down -v
 ```
+
+This builds images and starts all containers.
+
+### Start Without Build
+
+```bash
+docker compose up
+```
+
+Use when images are already built.
+
+### Start in Background
+
+```bash
+docker compose up -d
+```
+
+Run services in detached mode.
+
+### Stop Services
+
+```bash
+docker compose down
+```
+
+Stop and remove containers.
+
+Stop without removing:
+```bash
+docker compose stop
+```
+
+### View Logs
+
+```bash
+docker compose logs -f [service-name]
+```
+
+Example:
+```bash
+docker compose logs -f api-gateway
+```
+
+## Environment Variables
+
+Create `.env` file from `.env.example`:
+
+```bash
+cp .env.example .env
+```
+
+Fill in required values:
+- `JWT_SECRET` — 64+ character secret
+- `MONGODB_URI` — Database connection
+- `GMAIL_*` — Email credentials
+
+See [environment-variables.md](./environment-variables.md) for details.
+
+## Service Dependencies
+
+Services start in order:
+1. MongoDB
+2. Notification Service
+3. Auth Service
+4. User Service (waits for Notification)
+5. Booking Service (waits for User and Notification)
+6. API Gateway (waits for all services)
 
 ## Health Checks
 
-All services include health checks:
-
-```yaml
-healthcheck:
-  test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:PORT/actuator/health']
-  interval: 30s
-  timeout: 10s
-  retries: 3
-  start_period: 40s
+Each service has health check endpoint:
+```
+GET /actuator/health
 ```
 
-Check status:
+Docker Compose uses these to determine when services are ready.
+
+## Data Persistence
+
+MongoDB data persists in Docker volume:
+- Volume name: `mongo-data`
+- Stored at: `/data/db` in container
+
+Data survives container restarts.
+
+To reset data:
 ```bash
-docker compose ps
-docker compose exec api-gateway wget -qO- http://localhost:9090/actuator/health
+docker compose down -v
+docker compose up --build
 ```
 
-## Service Discovery
+## Accessing Services
 
-Services reach each other by container name:
-- `http://auth-service:9000`
-- `http://user-service:9001`
-- `http://booking-service:9002`
-- `http://notification-service:9003`
+### API Gateway (Main Entry Point)
 
-## Development vs Production
-
-### Local Development
-- MongoDB container included
-- Hot reload via volume mounts (future)
-- Debug ports exposed
-
-### Production
-```bash
-docker compose -f docker-compose.prod.yml up -d
+```
+http://localhost:9090
 ```
 
-Production differences:
-- No exposed database ports
-- Multi-stage builds
-- Non-root containers
-- Resource limits
+All API requests go through here.
+
+### MongoDB
+
+```
+mongodb://localhost:27017
+```
+
+Connect with MongoDB Compass or CLI.
+
+### Individual Services
+
+Direct access (development only):
+- Auth: `http://localhost:9000`
+- User: `http://localhost:9001`
+- Booking: `http://localhost:9002`
+- Notification: `http://localhost:9003`
+
+**Note**: In production, only API Gateway is exposed.
 
 ## Troubleshooting
 
-### Service won't start
-```bash
-# Check logs
-docker compose logs service-name
+### Services Won't Start
 
-# Rebuild single service
-docker compose up -d --build service-name
+Check logs:
+```bash
+docker compose logs [service-name]
 ```
 
-### Database connection issues
-```bash
-# Verify MongoDB is healthy
-docker compose ps
+Common issues:
+- Missing environment variables
+- Port conflicts
+- Insufficient memory
 
-# Check connection string
-docker compose exec mongo mongosh "${MONGODB_URI}"
+### MongoDB Connection Failed
+
+Verify:
+- MongoDB container is running
+- `MONGODB_URI` is correct
+- No network isolation issues
+
+### Service Unhealthy
+
+Check health endpoint:
+```bash
+curl http://localhost:9000/actuator/health
 ```
 
-### Reset everything
+Service may still be starting up. Wait a moment and retry.
+
+### Port Already in Use
+
+Change ports in `.env`:
+```
+AUTH_SERVICE_PORT=9001
+```
+
+Or stop the conflicting service.
+
+### Rebuild Everything
+
 ```bash
 docker compose down -v
-docker system prune -a
-docker compose up --build
+docker compose build --no-cache
+docker compose up
 ```
+
+## Development Workflow
+
+### Backend Changes
+
+1. Make code changes
+2. Rebuild specific service:
+   ```bash
+   docker compose up --build auth-service
+   ```
+
+### Frontend Development
+
+Frontend runs separately (not in Docker):
+```bash
+cd frontend
+bun run dev
+```
+
+Connects to API at `http://localhost:9090`.
+
+### Testing APIs
+
+Use curl, Postman, or HTTPie:
+```bash
+curl http://localhost:9090/api/v1/auth/login \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@test.com","password":"password"}'
+```
+
+## Production Considerations
+
+This Docker Compose setup is for **local development only**.
+
+For production:
+- Use orchestration platform (Kubernetes, ECS)
+- External database (MongoDB Atlas)
+- Load balancer
+- SSL/TLS termination
+- Secrets management (AWS Secrets Manager, etc.)
+
+## Links
+
+- Docker Compose file: `docker-compose.yml`
+- Environment variables: [.env.example](../../.env.example)
+- Environment docs: [environment-variables.md](./environment-variables.md)
+- Docker docs: https://docs.docker.com/compose/

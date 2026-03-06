@@ -1,222 +1,198 @@
 # State Management
 
-Zustand for global state, React Query for server state.
+Zustand for client state, React Query for server state.
 
-## Philosophy
+## Overview
 
-- **Zustand**: Client-only state (auth, UI preferences)
-- **React Query**: Server state (caching, background updates)
-- **Local state**: useState for component-level state
+Two libraries handle different types of state:
 
-## Zustand Stores
+- **Zustand**: Client state (auth, UI preferences)
+- **React Query**: Server state (API data, caching)
 
-### Auth Store
+This separation keeps the architecture clean and performant.
 
-Global authentication state with persistence:
+## Client State with Zustand
 
-```typescript
-// features/auth/store.ts
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+### When to Use
 
-interface AuthStore {
-  user: User | null
-  isAuthenticated: boolean
-  login: (email: string, role: string) => void
-  logout: () => void
-}
+Use Zustand for data that:
+- Doesn't come from the server
+- Needs to persist across sessions
+- Is local to the client
 
-export const useAuthStore = create<AuthStore>()(
-  persist(
-    (set) => ({
-      user: null,
-      isAuthenticated: false,
-      login: (email, role) => {
-        set({
-          user: { id: '1', email, role: role as 'customer' | 'specialist' },
-          isAuthenticated: true
-        })
-      },
-      logout: () => {
-        set({ user: null, isAuthenticated: false })
-      }
-    }),
-    { name: 'auth' } // localStorage key
-  )
-)
+Examples:
+- Authentication tokens and user info
+- UI theme preferences
+- Form drafts
+- Modal open/close state
+
+### Pattern
+
+Store files located in feature folders:
+```
+features/
+├── auth/
+│   └── store.ts
+├── customer/
+│   └── store.ts
+└── specialist/
+    └── store.ts
 ```
 
-Usage:
-```typescript
-import { useAuthStore } from '@/features/auth/store'
+### Best Practices
 
-function Dashboard() {
-  const { user, isAuthenticated, logout } = useAuthStore()
-  
-  if (!isAuthenticated) return <Navigate to="/login" />
-  
-  return <div>Welcome {user?.email}</div>
-}
+**Keep stores small and focused:**
+- One store per feature
+- Don't put server data in Zustand
+- Use slices for complex state
+
+**Persistence:**
+- Use Zustand's persist middleware for localStorage
+- Only persist necessary data (not sensitive tokens)
+- Encrypt sensitive data if persisting
+
+**Example Usage:**
+
+See `frontend/src/features/auth/store.ts` for implementation.
+
+## Server State with React Query
+
+### When to Use
+
+Use React Query for data that:
+- Comes from API endpoints
+- Needs caching
+- Requires background updates
+- Has loading/error states
+
+Examples:
+- User profiles
+- Booking lists
+- Specialist data
+- Reviews
+
+### Pattern
+
+Query hooks located in feature folders:
+```
+features/
+├── auth/
+│   └── queries.ts
+├── customer/
+│   └── queries.ts
+└── specialist/
+    └── queries.ts
 ```
 
-### Store Best Practices
+### Key Features
 
-1. **One store per domain**: auth, cart, preferences
-2. **Keep stores small**: Under 10 actions ideally
-3. **Use TypeScript**: Full type inference
-4. **Persist selectively**: Only persist what's needed
-5. **No nested stores**: Flat structure
+**Caching:**
+- Automatic caching based on query keys
+- Configurable stale time
+- Background refetching when data is stale
 
-## React Query
+**Loading States:**
+- `isLoading` — First fetch
+- `isFetching` — Any fetch (including background)
+- No need for manual loading state management
 
-Server state management with caching:
+**Error Handling:**
+- Automatic retry on failure
+- `error` object with details
+- Configurable retry count
 
-```typescript
-// App.tsx
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+**Optimistic Updates:**
+- Update UI before server confirms
+- Rollback on error
+- Great for mutations
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      retry: 2
-    }
-  }
-})
+### Best Practices
 
-function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>
-  )
-}
-```
+**Query Keys:**
+- Use arrays: `['users', userId]`
+- Include all dependencies
+- Consistent naming across app
 
-### Query Hooks Pattern
+**Mutations:**
+- Use for POST, PUT, DELETE
+- Invalidate related queries on success
+- Show success/error toasts
 
-```typescript
-// features/bookings/hooks/useBookings.ts
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+**Prefetching:**
+- Prefetch on hover for better UX
+- Use `queryClient.prefetchQuery`
 
-const BOOKINGS_KEY = 'bookings'
+## Choosing Between Zustand and React Query
 
-export function useBookings() {
-  return useQuery({
-    queryKey: [BOOKINGS_KEY],
-    queryFn: async () => {
-      const response = await apiClient.get('/api/v1/bookings')
-      return response.data
-    }
-  })
-}
+| Use Case | Zustand | React Query |
+|----------|---------|-------------|
+| Auth tokens | ✅ | ❌ |
+| User profile | ❌ | ✅ |
+| UI theme | ✅ | ❌ |
+| Booking list | ❌ | ✅ |
+| Form draft | ✅ | ❌ |
+| API cache | ❌ | ✅ |
 
-export function useCreateBooking() {
-  const queryClient = useQueryClient()
-  
-  return useMutation({
-    mutationFn: async (booking: BookingDto) => {
-      const response = await apiClient.post('/api/v1/bookings', booking)
-      return response.data
-    },
-    onSuccess: () => {
-      // Invalidate and refetch
-      queryClient.invalidateQueries({ queryKey: [BOOKINGS_KEY] })
-    }
-  })
-}
-```
+**Rule of thumb:**
+- If it comes from the server → React Query
+- If it's client-only → Zustand
 
-### Usage in Components
+## Integration Pattern
 
-```typescript
-function BookingList() {
-  const { data: bookings, isLoading, error } = useBookings()
-  const createBooking = useCreateBooking()
-  
-  if (isLoading) return <Spinner />
-  if (error) return <Error message={error.message} />
-  
-  return (
-    <>
-      {bookings?.map(booking => (
-        <BookingCard key={booking.id} booking={booking} />
-      ))}
-      <Button onClick={() => createBooking.mutate(newBooking)}>
-        Create Booking
-      </Button>
-    </>
-  )
-}
-```
+Zustand and React Query work together:
 
-## State Separation Guidelines
+1. **Login flow**:
+   - React Query: Call login API
+   - Zustand: Store tokens and user info on success
 
-| State Type | Where | Example |
-|------------|-------|---------|
-| Global Client | Zustand | Auth, theme |
-| Global Server | React Query | Bookings, users |
-| Feature Local | useState | Form inputs, modals |
-| Shared Feature | Context | Feature-specific data |
+2. **Fetch user data**:
+   - React Query: Fetch from `/api/v1/users/{id}`
+   - Component: Display data from React Query
 
-## Common Patterns
+3. **Logout**:
+   - Zustand: Clear auth state
+   - React Query: Clear all queries (queryClient.clear())
 
-### Combining Zustand and React Query
+## Configuration
 
-```typescript
-function useAuthUser() {
-  // Zustand for auth state
-  const { isAuthenticated } = useAuthStore()
-  
-  // React Query for user data
-  const { data: user } = useQuery({
-    queryKey: ['user'],
-    queryFn: fetchUser,
-    enabled: isAuthenticated // Only fetch if logged in
-  })
-  
-  return { isAuthenticated, user }
-}
-```
+**React Query Client** configured in `App.tsx`:
+- Default stale time: 5 minutes
+- Retry count: 3
+- Refetch on window focus: false (configurable)
 
-### Optimistic Updates
+## Benefits of This Approach
 
-```typescript
-const updateBooking = useMutation({
-  mutationFn: updateBookingApi,
-  onMutate: async (newBooking) => {
-    await queryClient.cancelQueries({ queryKey: ['bookings'] })
-    const previous = queryClient.getQueryData(['bookings'])
-    queryClient.setQueryData(['bookings'], (old) => 
-      old?.map(b => b.id === newBooking.id ? newBooking : b)
-    )
-    return { previous }
-  },
-  onError: (err, newBooking, context) => {
-    queryClient.setQueryData(['bookings'], context.previous)
-  },
-  onSettled: () => {
-    queryClient.invalidateQueries({ queryKey: ['bookings'] })
-  }
-})
-```
+**Separation of Concerns:**
+- Client state separate from server state
+- Clear responsibilities
 
-## DevTools
+**Performance:**
+- React Query handles caching automatically
+- No unnecessary re-renders
+- Background updates keep data fresh
 
-Zustand supports Redux DevTools:
+**Developer Experience:**
+- Less boilerplate than Redux
+- TypeScript support
+- DevTools for debugging
 
-```typescript
-import { devtools } from 'zustand/middleware'
+## Common Pitfalls
 
-const useStore = create(
-  devtools(
-    persist(...),
-    { name: 'AuthStore' }
-  )
-)
-```
+**Don't:**
+- Put API data in Zustand (use React Query)
+- Mix server and client state in one store
+- Forget to handle loading/error states
+- Over-fetch (React Query deduplicates automatically)
 
-React Query has built-in DevTools (add to dev dependencies):
-```typescript
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
-```
+**Do:**
+- Keep stores small and focused
+- Use consistent query keys
+- Handle errors gracefully
+- Leverage React Query's caching
+
+## Links
+
+- Zustand docs: https://docs.pmnd.rs/zustand
+- React Query docs: https://tanstack.com/query/latest
+- Example stores: `frontend/src/features/auth/store.ts`
+- Example queries: `frontend/src/features/auth/queries.ts`

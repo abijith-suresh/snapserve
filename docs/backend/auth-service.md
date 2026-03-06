@@ -2,40 +2,14 @@
 
 Handles user authentication, JWT token management, and account security.
 
-## Responsibilities
+## Purpose
 
+Manages identity and access:
 - User registration (customers and specialists)
 - Login/logout with JWT tokens
 - Token refresh
-- Account lockout after failed login attempts
-- Password hashing with BCrypt
-
-## Authentication Flow
-
-```
-1. Register
-   POST /api/v1/auth/register
-   Request: { email, password, name, role }
-   Response: 201 Created
-
-2. Login
-   POST /api/v1/auth/login
-   Request: { email, password }
-   Response: { accessToken, refreshToken, expiresIn }
-
-3. Access Protected Resource
-   GET /api/v1/customers/123
-   Header: Authorization: Bearer <accessToken>
-
-4. Refresh Token (when access token expires)
-   POST /api/v1/auth/refresh
-   Request: { refreshToken }
-   Response: { accessToken, refreshToken, expiresIn }
-
-5. Logout
-   POST /api/v1/auth/logout
-   Header: Authorization: Bearer <accessToken>
-```
+- Account lockout security
+- Password management
 
 ## API Endpoints
 
@@ -43,31 +17,7 @@ Handles user authentication, JWT token management, and account security.
 
 Register a new customer or specialist.
 
-**Request:**
-```json
-{
-  "email": "customer@example.com",
-  "password": "SecurePass123!",
-  "name": "John Doe",
-  "role": "CUSTOMER"
-}
-```
-
-**Response 201:**
-```json
-{
-  "success": true,
-  "data": {
-    "id": "507f1f77bcf86cd799439011",
-    "email": "customer@example.com",
-    "name": "John Doe",
-    "role": "CUSTOMER",
-    "createdAt": "2024-01-15T10:30:00Z"
-  },
-  "message": null,
-  "timestamp": "2024-01-15T10:30:00Z"
-}
-```
+**Access**: Public (no authentication required)
 
 **Validation:**
 - Email: Required, valid format, unique
@@ -75,31 +25,22 @@ Register a new customer or specialist.
 - Name: 2-100 characters
 - Role: CUSTOMER or SPECIALIST
 
+**Response**: 201 Created with user details
+
 ### POST /api/v1/auth/login
 
 Authenticate user and return tokens.
 
-**Request:**
-```json
-{
-  "email": "customer@example.com",
-  "password": "SecurePass123!"
-}
-```
+**Access**: Public
 
-**Response 200:**
-```json
-{
-  "success": true,
-  "data": {
-    "accessToken": "eyJhbGciOiJIUzI1NiIs...",
-    "refreshToken": "dGhpcyBpcyBhIHJlZnJlc2g...",
-    "expiresIn": 900
-  },
-  "message": null,
-  "timestamp": "2024-01-15T10:30:00Z"
-}
-```
+**Request:**
+- email (string)
+- password (string)
+
+**Success Response:**
+- accessToken (string) — Valid for 15 minutes
+- refreshToken (string) — Valid for 7 days
+- expiresIn (number) — Seconds until access token expiry
 
 **Error Responses:**
 - 400: Invalid credentials
@@ -110,254 +51,158 @@ Authenticate user and return tokens.
 
 Get new access token using refresh token.
 
+**Access**: Public
+
 **Request:**
-```json
-{
-  "refreshToken": "dGhpcyBpcyBhIHJlZnJlc2g..."
-}
-```
+- refreshToken (string)
 
-**Response 200:**
-```json
-{
-  "success": true,
-  "data": {
-    "accessToken": "eyJhbGciOiJIUzI1NiIs...",
-    "refreshToken": "newRefreshToken...",
-    "expiresIn": 900
-  },
-  "message": null,
-  "timestamp": "2024-01-15T10:30:00Z"
-}
-```
+**Success Response:**
+- accessToken (string)
+- refreshToken (string) — New token (rotation)
+- expiresIn (number)
 
-**Note:** Refresh token rotation - new refresh token issued, old one invalidated.
+**Note:** Refresh tokens are single-use. New token issued, old one invalidated.
 
 ### POST /api/v1/auth/logout
 
 Invalidate refresh token.
 
+**Access**: Protected (requires valid access token)
+
 **Headers:**
 - Authorization: Bearer <accessToken>
 
-**Response 200:**
-```json
-{
-  "success": true,
-  "data": null,
-  "message": "Logged out successfully",
-  "timestamp": "2024-01-15T10:30:00Z"
-}
-```
+**Response**: 200 OK with success message
 
 ## Token Details
 
 ### Access Token
 
-- **Type:** JWT
-- **Algorithm:** HS256
-- **Lifetime:** 15 minutes (900 seconds)
-- **Storage:** Memory only (React state)
-- **Claims:**
-  - `sub`: User ID
-  - `email`: User email
-  - `role`: User role (CUSTOMER, SPECIALIST, ADMIN)
-  - `iat`: Issued at
-  - `exp`: Expiration
+- **Lifetime**: 15 minutes
+- **Storage**: Memory only (React state)
+- **Transport**: Authorization header
+- **Contains**: User ID, email, role
 
 ### Refresh Token
 
-- **Type:** JWT
-- **Algorithm:** HS256
-- **Lifetime:** 7 days
-- **Storage:** httpOnly cookie or secure storage
-- **Single-use:** Yes (rotated on each use)
-- **Claims:**
-  - `sub`: User ID
-  - `type`: "refresh"
-  - `jti`: Unique token ID (for revocation)
+- **Lifetime**: 7 days
+- **Storage**: httpOnly cookie or secure storage
+- **Single-use**: Yes (rotated on each refresh)
+- **Purpose**: Obtain new access token without re-login
 
-## Account Lockout
+## Security Features
 
-Security feature to prevent brute force attacks:
+### Account Lockout
 
-- **Max attempts:** 5 failed logins
-- **Lockout duration:** 30 minutes
-- **Reset:** Successful login or admin unlock
+Prevents brute force attacks:
+- **Max attempts**: 5 failed logins
+- **Lockout duration**: 30 minutes
+- **Reset**: Successful login or admin unlock
 
-```java
-@Entity
-public class Account extends Auditable {
-    private int failedLoginAttempts = 0;
-    private LocalDateTime lockedUntil;
-    
-    public boolean isLocked() {
-        if (lockedUntil == null) return false;
-        return LocalDateTime.now().isBefore(lockedUntil);
-    }
-}
-```
+After 5 failed attempts, account is locked for 30 minutes.
 
-## Password Security
+### Password Security
 
-**Hashing:** BCrypt with strength 10
-
-```java
-@Bean
-public PasswordEncoder passwordEncoder() {
-    return new BCryptPasswordEncoder(10);
-}
-```
-
-**Validation:**
+**Requirements:**
 - Minimum 8 characters
 - At least one uppercase letter
 - At least one lowercase letter
 - At least one number
 - At least one special character (@$!%*?&)
 
+**Storage:**
+- Hashed with BCrypt (strength 10)
+- Never stored in plain text
+- One-way hash (cannot recover original password)
+
 ## Architecture
 
-```
-AccountController
-    ├── AccountService
-    │       ├── AccountRepository (MongoDB)
-    │       ├── PasswordEncoder (BCrypt)
-    │       └── JwtTokenProvider
-    └── DTOs (Java Records)
-            ├── RegisterRequest
-            ├── LoginRequest
-            ├── RefreshRequest
-            └── AuthResponse
-```
+### Components
 
-## Key Classes
+**AccountController**
+- REST endpoints for auth operations
+- Request validation
+- Response formatting
 
-### AccountController
+**AccountService**
+- Business logic for authentication
+- Token generation and validation
+- Account lockout management
+- Password hashing
 
-```java
-@RestController
-@RequestMapping("/api/v1/auth")
-@RequiredArgsConstructor
-public class AccountController {
-    
-    private final AccountService accountService;
-    
-    @PostMapping("/register")
-    public ResponseEntity<ApiResponse<AccountDto>> register(
-            @Valid @RequestBody RegisterRequest request) { }
-    
-    @PostMapping("/login")
-    public ResponseEntity<ApiResponse<AuthResponse>> login(
-            @Valid @RequestBody LoginRequest request) { }
-    
-    @PostMapping("/refresh")
-    public ResponseEntity<ApiResponse<AuthResponse>> refresh(
-            @Valid @RequestBody RefreshRequest request) { }
-    
-    @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<Void>> logout(
-            @RequestHeader("Authorization") String authHeader) { }
-}
-```
+**AccountRepository**
+- Database access for account records
+- Queries by email, ID
 
-### DTOs (Java Records)
+**DTOs** (Java Records)
+- RegisterRequest — Registration input
+- LoginRequest — Login input
+- RefreshRequest — Token refresh input
+- AuthResponse — Token output
 
-```java
-public record RegisterRequest(
-    @NotBlank @Email @Size(max = 255) String email,
-    @NotBlank @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&]).{8,}$") String password,
-    @NotBlank @Size(min = 2, max = 100) String name,
-    @NotNull Role role
-) {}
+### Authentication Flow
 
-public record LoginRequest(
-    @NotBlank @Email String email,
-    @NotBlank String password
-) {}
+1. User submits credentials
+2. System validates input format
+3. System retrieves account by email
+4. System verifies password with BCrypt
+5. System checks account lock status
+6. System generates JWT tokens
+7. System returns tokens to client
 
-public record RefreshRequest(
-    @NotBlank String refreshToken
-) {}
+## Database
 
-public record AuthResponse(
-    String accessToken,
-    String refreshToken,
-    long expiresIn
-) {}
-```
+**Collection**: `accounts`
 
-## Configuration
+Fields:
+- `_id` — MongoDB ObjectId
+- `email` — Unique email address
+- `password` — BCrypt hashed password
+- `name` — User display name
+- `role` — CUSTOMER, SPECIALIST, or ADMIN
+- `failedLoginAttempts` — Count for lockout
+- `lockedUntil` — Lockout expiry timestamp
+- `createdAt` — Account creation time
+- `updatedAt` — Last update time
 
-### application.yml
-
-```yaml
-server:
-  port: 9000
-
-spring:
-  application:
-    name: auth-service
-  data:
-    mongodb:
-      uri: ${MONGODB_URI}
-      auto-index-creation: true
-
-jwt:
-  secret: ${JWT_SECRET}
-  access-token-expiration: 900000      # 15 minutes
-  refresh-token-expiration: 604800000  # 7 days
-
-logging:
-  level:
-    com.snapserve.authservice: INFO
-```
+Indexes:
+- `email`: Unique index for fast lookup
 
 ## Dependencies
 
-```kotlin
-dependencies {
-    implementation(project(":backend:common"))
-    
-    implementation("org.springframework.boot:spring-boot-starter-web")
-    implementation("org.springframework.boot:spring-boot-starter-data-mongodb")
-    implementation("org.springframework.boot:spring-boot-starter-validation")
-    implementation("org.springframework.boot:spring-boot-starter-security")
-    
-    // JWT
-    implementation("io.jsonwebtoken:jjwt-api:0.13.0")
-    runtimeOnly("io.jsonwebtoken:jjwt-impl:0.13.0")
-    runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.13.0")
-    
-    // OpenAPI
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0")
-}
+- Spring Boot Web — REST endpoints
+- Spring Data MongoDB — Database access
+- Spring Security — Password encoding
+- JJWT — Token generation and parsing
+- Spring Validation — Input validation
+- SpringDoc OpenAPI — API documentation
+
+See `backend/auth-service/build.gradle.kts` for versions.
+
+## Configuration
+
+Key settings in `application.yml`:
+
+```yaml
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-expiration: 900000      # 15 minutes (ms)
+  refresh-token-expiration: 604800000  # 7 days (ms)
 ```
 
-## Database Schema
+Environment variables:
+- `JWT_SECRET` — 64+ character secret key
+- `MONGODB_URI` — Database connection string
 
-**Collection:** `accounts`
+## API Documentation
 
-```javascript
-{
-  _id: ObjectId,
-  email: String (unique, indexed),
-  password: String (bcrypt hash),
-  name: String,
-  role: String (CUSTOMER | SPECIALIST | ADMIN),
-  failedLoginAttempts: Number,
-  lockedUntil: Date,
-  createdAt: Date,
-  updatedAt: Date
-}
-```
-
-Indexes:
-- `email`: Unique
-- `role`: For filtering by role
+OpenAPI/Swagger documentation available at:
+`http://localhost:9090/swagger-ui.html`
 
 ## Links
 
-- [API Design Standards](../standards/api-design.md)
-- [Security Guidelines](../standards/security.md)
-- [User Service](./user-service.md) — Profile management
+- Service source: `backend/auth-service/`
+- DTOs: `backend/auth-service/src/main/java/.../dto/`
+- Controllers: `backend/auth-service/src/main/java/.../controller/`
+- API design standards: [../standards/api-design.md](../standards/api-design.md)
+- Security guidelines: [../standards/security.md](../standards/security.md)

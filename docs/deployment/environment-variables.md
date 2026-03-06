@@ -1,190 +1,186 @@
 # Environment Variables
 
-Complete reference for all environment variables.
+Configuration via environment variables.
+
+## Overview
+
+All configuration is externalized via environment variables. No secrets or config hardcoded in code.
+
+Create `.env` file from `.env.example` and fill in values.
 
 ## Required Variables
 
-These must be set in `.env` file:
+### JWT Configuration
 
-### MongoDB
+**JWT_SECRET**
+- Secret key for signing JWT tokens
+- Must be 64+ characters
+- Generate with: `openssl rand -base64 64`
+- **Required for all services**
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `MONGODB_URI` | Yes* | - | MongoDB connection string |
+### Database
 
-*Required if not using local MongoDB container
+**MONGODB_URI**
+- MongoDB connection string
+- Format: `mongodb://localhost:27017/snapserve`
+- **Required for auth, user, booking services**
 
-Atlas format:
-```
-MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/snapserve?retryWrites=true&w=majority
-```
+### Email
 
-Local format:
-```
-MONGODB_URI=mongodb://admin:password@mongo:27017/snapserve?authSource=admin
-```
+**GMAIL_USERNAME**
+- Gmail address for sending emails
+- Example: `yourapp@gmail.com`
 
-### JWT Security
-
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `JWT_SECRET` | Yes | - | Signing key (≥64 chars) |
-
-Generate a secure secret:
-```bash
-openssl rand -base64 64
-```
-
-Example:
-```
-JWT_SECRET=your-very-long-secret-key-at-least-64-characters-long-here...
-```
-
-### Gmail SMTP (Notification Service)
-
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `GMAIL_USERNAME` | Yes* | - | Gmail address |
-| `GMAIL_APP_PASSWORD` | Yes* | - | Gmail App Password |
-
-*Required only if using notification-service
-
-How to get App Password:
-1. Enable 2FA on Google account
-2. Visit https://myaccount.google.com/apppasswords
-3. Generate app password for "Mail"
-4. Copy the 16-character password
-
-Example:
-```
-GMAIL_USERNAME=notifications@example.com
-GMAIL_APP_PASSWORD=abcd efgh ijkl mnop
-```
+**GMAIL_APP_PASSWORD**
+- Gmail app-specific password
+- Not your regular Gmail password
+- Generate at: Google Account → Security → App passwords
 
 ### CORS
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `ALLOWED_ORIGINS` | No | `http://localhost:3000` | Comma-separated allowed origins |
+**ALLOWED_ORIGINS**
+- Comma-separated list of allowed origins
+- Example: `http://localhost:3000,https://app.example.com`
+- **Required for API Gateway**
 
-For multiple origins:
-```
-ALLOWED_ORIGINS=http://localhost:3000,https://app.example.com
-```
+### Service URLs (Docker Compose)
 
-## Optional Variables
+**AUTH_SERVICE_URL**
+- URL for auth-service
+- Default: `http://auth-service:9000`
 
-### Docker Compose Settings
+**USER_SERVICE_URL**
+- URL for user-service
+- Default: `http://user-service:9001`
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `RESTART_POLICY` | No | `no` | Container restart policy |
+**BOOKING_SERVICE_URL**
+- URL for booking-service
+- Default: `http://booking-service:9002`
 
-Options: `no`, `always`, `unless-stopped`
+**NOTIFICATION_SERVICE_URL**
+- URL for notification-service
+- Default: `http://notification-service:9003`
 
-### MongoDB Container (Local Only)
+### MongoDB Container
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `MONGO_ROOT_USER` | No | `admin` | MongoDB root username |
-| `MONGO_ROOT_PASSWORD` | No | `password` | MongoDB root password |
+**MONGO_ROOT_USER**
+- MongoDB admin username
+- Default: `admin`
 
-Only used when running MongoDB via Docker Compose.
+**MONGO_ROOT_PASSWORD**
+- MongoDB admin password
+- Default: `password`
+- Change for production
 
-### Service URLs (Development)
+### Deployment
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `AUTH_SERVICE_URL` | No | `http://localhost:9000` | Auth service URL |
-| `USER_SERVICE_URL` | No | `http://localhost:9001` | User service URL |
-| `BOOKING_SERVICE_URL` | No | `http://localhost:9002` | Booking service URL |
-| `NOTIFICATION_SERVICE_URL` | No | `http://localhost:9003` | Notification service URL |
+**RESTART_POLICY**
+- Docker restart policy
+- Options: `no`, `on-failure`, `always`, `unless-stopped`
+- Default: `no` (for development)
 
-In Docker Compose, these are overridden to use service names.
+## Variable Categories
 
-## Complete .env Example
+| Category | Variables |
+|----------|-----------|
+| Security | JWT_SECRET |
+| Database | MONGODB_URI, MONGO_ROOT_USER, MONGO_ROOT_PASSWORD |
+| Email | GMAIL_USERNAME, GMAIL_APP_PASSWORD |
+| Network | ALLOWED_ORIGINS |
+| Service Discovery | *_SERVICE_URL |
+| Deployment | RESTART_POLICY |
 
-```bash
-# ============================================
-# SnapServe Environment Configuration
-# ============================================
+## Security Best Practices
 
-# --- Database (Required) ---
-# MongoDB Atlas or local
-MONGODB_URI=mongodb+srv://user:password@cluster.mongodb.net/snapserve?retryWrites=true&w=majority
+### Local Development
 
-# --- Security (Required) ---
-# Generate: openssl rand -base64 64
-JWT_SECRET=your-64-character-minimum-secret-key-here-change-in-production
-
-# --- Email (Required for notifications) ---
-GMAIL_USERNAME=your-email@gmail.com
-GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx
-
-# --- CORS (Optional) ---
-ALLOWED_ORIGINS=http://localhost:3000
-
-# --- Docker Compose (Optional) ---
-RESTART_POLICY=unless-stopped
-
-# --- Local MongoDB (Optional) ---
-# Only needed if using local MongoDB container
-MONGO_ROOT_USER=admin
-MONGO_ROOT_PASSWORD=changeme
-
-# --- Development URLs (Optional) ---
-# Only needed when running services outside Docker
-AUTH_SERVICE_URL=http://localhost:9000
-USER_SERVICE_URL=http://localhost:9001
-BOOKING_SERVICE_URL=http://localhost:9002
-NOTIFICATION_SERVICE_URL=http://localhost:9003
-```
-
-## Security Checklist
-
-- [ ] JWT_SECRET is ≥64 characters
-- [ ] JWT_SECRET is different in each environment
-- [ ] GMAIL_APP_PASSWORD is not your regular Gmail password
-- [ ] MongoDB password is strong (if using local)
-- [ ] .env file is in .gitignore
-- [ ] Production credentials are not committed
-
-## Environment-Specific Values
-
-### Development
-
-```
-ALLOWED_ORIGINS=http://localhost:3000
-RESTART_POLICY=no
-```
-
-### Staging
-
-```
-ALLOWED_ORIGINS=https://staging.example.com
-RESTART_POLICY=unless-stopped
-```
+- Use `.env` file (gitignored)
+- Don't commit `.env` to version control
+- Use strong passwords even locally
 
 ### Production
 
-```
-ALLOWED_ORIGINS=https://app.example.com
-RESTART_POLICY=always
-# Use strong, unique JWT_SECRET
-# Use production MongoDB cluster
-# Use production email service
-```
+- Use secrets management (AWS Secrets Manager, HashiCorp Vault)
+- Rotate secrets regularly
+- Use different secrets per environment
+- Never log secrets
+- Restrict secret access with IAM roles
+
+### Variable Protection
+
+**Sensitive (never expose to client):**
+- JWT_SECRET
+- GMAIL_APP_PASSWORD
+- MONGO_ROOT_PASSWORD
+- Database credentials
+
+**Safe for client (with VITE_ prefix):**
+- VITE_API_URL
+
+## Frontend Environment
+
+Frontend uses Vite's environment variable system:
+
+Variables must start with `VITE_` to be exposed to client code.
+
+**Required:**
+- `VITE_API_URL` — API gateway URL
+  - Development: `http://localhost:9090`
+  - Production: Your production API URL
+
+## Docker Compose
+
+Docker Compose reads `.env` automatically.
+
+Variables can also be set in `docker-compose.yml` environment section.
+
+## Configuration Priority
+
+1. Environment variables (highest priority)
+2. Application properties (application.yml)
+3. Default values (lowest priority)
 
 ## Validation
 
-The application validates required env vars on startup. Missing required variables will cause the service to fail fast with a clear error message.
+Services validate required variables on startup.
 
-## Secrets Management
+Missing required variable → Service fails to start with clear error message.
 
-For production, consider:
-- AWS Secrets Manager
-- HashiCorp Vault
-- Kubernetes Secrets
-- Docker Swarm secrets
+## Example .env File
 
-Never commit `.env` files containing real credentials.
+```bash
+# Security
+JWT_SECRET=your-64-character-secret-here-minimum-length-required
+
+# Database
+MONGODB_URI=mongodb://mongo:27017/snapserve
+
+# Email
+GMAIL_USERNAME=yourapp@gmail.com
+GMAIL_APP_PASSWORD=your-app-password
+
+# CORS
+ALLOWED_ORIGINS=http://localhost:3000
+
+# Service URLs (Docker internal)
+AUTH_SERVICE_URL=http://auth-service:9000
+USER_SERVICE_URL=http://user-service:9001
+BOOKING_SERVICE_URL=http://booking-service:9002
+NOTIFICATION_SERVICE_URL=http://notification-service:9003
+
+# MongoDB Container
+MONGO_ROOT_USER=admin
+MONGO_ROOT_PASSWORD=secure-password
+
+# Deployment
+RESTART_POLICY=no
+
+# Frontend
+VITE_API_URL=http://localhost:9090
+```
+
+## Links
+
+- Example file: [.env.example](../../.env.example)
+- Docker Compose: [docker-compose.md](./docker-compose.md)
+- Security guidelines: [../standards/security.md](../standards/security.md)

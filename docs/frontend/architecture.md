@@ -1,215 +1,207 @@
 # Frontend Architecture
 
-React 18 + TypeScript application with Vite build tooling.
+React SPA structure and technology choices.
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Framework | React 18 |
-| Language | TypeScript 5.9 (strict mode) |
-| Build Tool | Vite 7 |
-| Package Manager | Bun |
-| Styling | Tailwind CSS 4 |
-| UI Components | shadcn/ui + Radix |
-| State | Zustand |
-| Data Fetching | React Query 5 |
-| Routing | React Router 7 |
-| Validation | Zod |
-| Forms | React Hook Form |
-| Linting | Biome |
+- **Framework**: React 19
+- **Language**: TypeScript 5.9 (strict mode)
+- **Build Tool**: Vite
+- **Package Manager**: Bun
+- **Styling**: Tailwind CSS v4
+- **Components**: shadcn/ui (built on Radix UI)
+- **State Management**: Zustand (client), React Query (server)
+- **Forms**: React Hook Form + Zod
+- **Routing**: React Router 7
+- **HTTP Client**: Axios
+- **Linting**: Biome
 
-## Directory Structure
+## Project Structure
+
+Feature-based organization for scalability:
 
 ```
-frontend/src/
-├── components/        # shadcn/ui components
-├── features/          # Domain-specific modules
+src/
+├── components/ui/     # shadcn/ui components (reusable)
+├── features/          # Feature modules
 │   ├── auth/         # Authentication
-│   ├── customer/     # Customer views
-│   └── specialist/   # Specialist views
+│   ├── customer/     # Customer portal
+│   └── specialist/   # Specialist portal
+├── pages/            # Public pages
+├── routes/           # Route definitions and layouts
+├── shared/           # Shared resources
+│   ├── api/         # Axios client config
+│   └── types/       # TypeScript types
 ├── hooks/            # Custom React hooks
-├── lib/              # Utilities (utils.ts)
-├── pages/            # Top-level page components
-├── routes/           # Routing components
-│   ├── ProtectedRoute.tsx
-│   └── RootLayout.tsx
-└── shared/           # Shared code
-    ├── api/          # API client
-    └── types/        # TypeScript types
+└── lib/              # Utility functions
 ```
 
-## Feature-Based Organization
+## Feature Modules
 
-Features are self-contained modules:
+Each feature is self-contained:
 
-```
-features/customer/
-├── Layout.tsx        # Feature layout with sidebar
-├── Dashboard.tsx     # Dashboard view
-├── Bookings.tsx      # Bookings list
-├── BookingDetail.tsx # Booking detail
-└── Profile.tsx       # Profile management
-```
+**auth/**
+- Store: `store.ts` (Zustand)
+- API: `api.ts` (React Query hooks)
+- Types: `types.ts`
 
-Each feature has its own components, hooks, and state as needed.
+**customer/**
+- Components: Dashboard, Bookings, Profile pages
+- Store: Customer-specific state
+- API: Customer-related queries
 
-## TypeScript Configuration
+**specialist/**
+- Components: Dashboard, Appointments, Profile pages
+- Store: Specialist-specific state
+- API: Specialist-related queries
 
-Strict mode enabled with path aliases:
-
-```json
-{
-  "compilerOptions": {
-    "strict": true,
-    "paths": {
-      "@/*": ["./src/*"]
-    }
-  }
-}
-```
-
-Path mapping in `vite.config.ts`:
-```typescript
-resolve: {
-  alias: {
-    '@': path.resolve(__dirname, './src')
-  }
-}
-```
-
-## Component Patterns
+## Component Guidelines
 
 ### shadcn/ui Components
 
-Components installed via CLI:
-```bash
-npx shadcn add button card dialog
-```
-
-Located in `components/ui/`, styled with Tailwind, use `cn()` for class merging.
+Use built-in components from `components/ui/`:
+- Button, Card, Input, Label, etc.
+- Styled with Tailwind CSS
+- Accessible (Radix UI primitives)
+- Customizable via className
 
 ### Custom Components
 
-Business components live in features or pages:
+- Keep components small and focused
+- Use TypeScript interfaces for props
+- Prefer composition over inheritance
+- Co-locate related components in feature folders
 
-```typescript
-// Use path alias for imports
-import { Button } from '@/components/ui/button'
-import { useAuthStore } from '@/features/auth/store'
-```
+## State Management Strategy
+
+### Client State (Zustand)
+
+Use for:
+- Authentication state (user, tokens)
+- UI state (modals, theme)
+- Form state (drafts)
+
+Stored in feature folders: `features/<feature>/store.ts`
+
+### Server State (React Query)
+
+Use for:
+- API data fetching
+- Caching server responses
+- Background updates
+- Optimistic updates
+
+Stored in feature folders: `features/<feature>/queries.ts`
+
+### When to use which?
+
+**Zustand**: Data that doesn't come from server (auth tokens, UI preferences)
+**React Query**: Data that comes from API (users, bookings, profiles)
+
+## TypeScript Configuration
+
+Strict mode enabled:
+- `strict: true`
+- `noImplicitAny: true`
+- `strictNullChecks: true`
+
+All code must pass: `bun run typecheck`
+
+## API Integration
+
+### Axios Client
+
+Configured in `shared/api/client.ts`:
+- Base URL: `http://localhost:9090` (gateway)
+- Request interceptor: Adds Bearer token
+- Response interceptor: Handles 401 (logout)
+
+### API Calls Pattern
+
+Use React Query hooks:
+- `useQuery` for reading data
+- `useMutation` for writing data
+- Define in feature folders
+- Reuse across components
 
 ## Styling
 
-### Tailwind CSS 4
+### Tailwind CSS v4
 
-Using new CSS-first configuration:
+CSS-first configuration in `index.css`:
+- Theme colors defined via CSS variables
+- shadcn/ui uses Tailwind classes
+- Responsive design with Tailwind breakpoints
 
-```css
-/* index.css */
-@import "tailwindcss";
+### Styling Approach
 
-@theme {
-  --color-primary: #0f766e;
-  --color-secondary: #f59e0b;
-}
+- Use Tailwind utility classes
+- Avoid custom CSS when possible
+- Use `cn()` utility for conditional classes
+- Follow shadcn/ui component patterns
+
+## Routing
+
+React Router 7 with data API:
+- Route definitions in `routes/`
+- Layout routes for shared UI
+- Protected routes with role checks
+- Nested routes for features
+
+See [routing.md](./routing.md) for details.
+
+## Code Quality
+
+### Biome Configuration
+
+- Linting and formatting in one tool
+- Fast (Rust-based)
+- Replaces ESLint + Prettier
+
+Commands:
+```bash
+bun run lint       # Check issues
+bun run lint:fix   # Auto-fix
+bun run format     # Format code
 ```
 
-### Class Variance Authority
+### Pre-commit Hooks
 
-Components use CVA for variant management:
+Husky + lint-staged:
+- Runs Biome on staged files
+- Enforces conventional commits
 
-```typescript
-import { cva, type VariantProps } from 'class-variance-authority'
+## Build and Deploy
 
-const buttonVariants = cva(
-  'inline-flex items-center justify-center',
-  {
-    variants: {
-      variant: {
-        default: 'bg-primary text-white',
-        outline: 'border border-gray-300'
-      }
-    }
-  }
-)
-```
-
-## API Client
-
-Axios-based client with interceptors:
-
-```typescript
-// shared/api/client.ts
-const apiClient = axios.create({
-  baseURL: 'http://localhost:3001',
-  headers: { 'Content-Type': 'application/json' }
-})
-
-// Request interceptor adds auth token
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
-})
-
-// Response interceptor handles 401
-apiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token')
-      window.location.href = '/login'
-    }
-    return Promise.reject(error)
-  }
-)
-```
-
-## Build Commands
+### Development
 
 ```bash
-# Development
-bun run dev
+bun run dev    # Start dev server (port 3000)
+```
 
-# Production build
-bun run build
+### Production Build
 
-# Type checking
-bun run type-check
+```bash
+bun run build  # Create production build
+```
 
-# Linting
-bun run lint
-bun run lint:fix
+### Type Checking
 
-# Formatting
-bun run format
+```bash
+bun run typecheck  # Verify TypeScript (strict mode)
 ```
 
 ## Environment Variables
 
-```
-VITE_API_URL=http://localhost:9090
-```
+Vite uses `.env` files:
+- `VITE_API_URL` — API gateway URL
 
-Access in code:
-```typescript
-const apiUrl = import.meta.env.VITE_API_URL
-```
+Prefix all env vars with `VITE_` to expose to client.
 
-## Entry Points
+## Links
 
-- **Main**: `src/main.tsx` - React root render
-- **App**: `src/App.tsx` - Router and providers
-- **HTML**: `index.html` - Vite entry
-
-## Testing Strategy
-
-Unit tests with Vitest (to be added):
-```bash
-# Future: bun run test
-```
-
-E2E tests with Playwright (to be added).
+- Source: `frontend/src/`
+- Components: `frontend/src/components/ui/`
+- State management: [state-management.md](./state-management.md)
+- Routing: [routing.md](./routing.md)
+- Code style: [../standards/code-style.md](../standards/code-style.md)

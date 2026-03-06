@@ -1,149 +1,220 @@
 # Booking Service
 
-Manages appointments and reviews between customers and specialists. Port: 9002.
+Manages bookings, reviews, and complaints.
 
-## Overview
+## Purpose
 
-The Booking Service coordinates service appointments and customer feedback:
-- Create and manage bookings
-- Track booking status (pending, confirmed, completed, cancelled)
-- Customer reviews and ratings for specialists
-- Specialist review aggregation
-
-## Architecture
-
-Spring Boot application with MongoDB. Uses Feign client (`user-service-client`) to validate users exist before creating bookings.
-
-## Key Entities
-
-### Booking
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | ObjectId | Primary key |
-| `customerId` | ObjectId | Customer reference |
-| `specialistId` | ObjectId | Specialist reference |
-| `appointmentTime` | LocalDateTime | Scheduled time |
-| `service` | String | Service type |
-| `status` | String | Booking status |
-
-### Review
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | ObjectId | Primary key |
-| `customerId` | ObjectId | Reviewer reference |
-| `specialistId` | ObjectId | Reviewee reference |
-| `rating` | Integer | 1-5 star rating |
-| `comment` | String | Review text |
-| `createdAt` | LocalDate | Review date |
+Core business logic for the platform:
+- Create and manage service bookings
+- Handle booking status transitions
+- Customer reviews for completed bookings
+- Complaint handling
 
 ## API Endpoints
 
-### Bookings
+### Booking Endpoints
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/v1/bookings` | List all bookings |
-| GET | `/api/v1/bookings/{id}` | Get booking by ID |
-| POST | `/api/v1/bookings` | Create booking |
-| PUT | `/api/v1/bookings/{id}` | Update booking |
-| DELETE | `/api/v1/bookings/{id}` | Delete booking |
+**POST /api/v1/bookings**
+- Create new booking
+- Access: Customer
+- Validates: Customer and specialist exist, time slot available
 
-### Reviews
+**GET /api/v1/bookings/{id}**
+- Get booking details
+- Access: Booking participants (customer or specialist)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/v1/reviews` | List all reviews |
-| GET | `/api/v1/reviews/{id}` | Get review by ID |
-| POST | `/api/v1/reviews` | Create review |
-| PUT | `/api/v1/reviews/{id}` | Update review |
-| DELETE | `/api/v1/reviews/{id}` | Delete review |
+**GET /api/v1/bookings**
+- List bookings
+- Query params: status, from, to, customerId, specialistId
+- Access: Customer (own bookings) or Specialist (own bookings)
 
-## DTOs
+**PUT /api/v1/bookings/{id}**
+- Update booking details
+- Access: Customer (if status allows)
 
-### AddBookingDto
-- `customerId`: String
-- `specialistId`: String  
-- `appointmentTime`: LocalDateTime
-- `service`: String
-- `status`: String
+**PATCH /api/v1/bookings/{id}/status**
+- Update booking status
+- Access: Specialist or Admin
+- Valid transitions: PENDING → CONFIRMED → COMPLETED
 
-### BookingResponseDto
-Full booking details with user info resolved via UserServiceClient.
+**DELETE /api/v1/bookings/{id}**
+- Cancel booking
+- Access: Customer or Admin
+- Only allowed before completion
 
-### ReviewDto
-- `customerId`: String
-- `specialistId`: String
-- `rating`: Integer
-- `comment`: String
+### Review Endpoints
 
-### SpecialistReviewResponseDto
-Aggregated review data for a specialist including average rating.
+**POST /api/v1/bookings/{id}/reviews**
+- Add review to completed booking
+- Access: Customer (booking owner)
+- Only allowed for COMPLETED bookings
 
-## Configuration
+**GET /api/v1/specialists/{id}/reviews**
+- Get all reviews for a specialist
+- Access: Public
 
-```yaml
-# application.yml
-server:
-  port: 9002
+**PUT /api/v1/reviews/{id}**
+- Update review (within 24 hours)
+- Access: Review author
 
-spring:
-  data:
-    mongodb:
-      uri: ${MONGODB_URI}
+## Booking Lifecycle
 
-user:
-  service:
-    url: ${USER_SERVICE_URL:http://user-service:9001}
-
-notification:
-  service:
-    url: ${NOTIFICATION_SERVICE_URL:http://notification-service:9003}
-```
-
-## Key Classes
-
-| Class | Purpose |
-|-------|---------|
-| `Booking` | Booking document model |
-| `Review` | Review document model |
-| `BookingRepository` | Booking data access |
-| `ReviewRepository` | Review data access |
-| `BookingService` | Booking business logic |
-| `ReviewService` | Review business logic |
-| `BookingController` | Booking REST endpoints |
-| `ReviewController` | Review REST endpoints |
-
-## Integration
-
-- **User Service**: Validates customer/specialist exist via Feign client
-- **Notification Service**: Sends confirmation emails for new bookings
-
-## Booking Status Flow
+### Status Flow
 
 ```
 PENDING → CONFIRMED → COMPLETED
-   ↓
-CANCELLED
+   ↓          ↓
+CANCELLED  CANCELLED
 ```
 
-Statuses are stored as strings for flexibility.
+**PENDING**: Booking created, awaiting specialist confirmation
+**CONFIRMED**: Specialist accepted, scheduled
+**COMPLETED**: Service delivered, payment processed
+**CANCELLED**: Cancelled by customer or specialist
 
-## Building
+### Status Transitions
 
-```bash
-# Build this service only
-./gradlew :backend:booking-service:build
+- **PENDING → CONFIRMED**: Specialist accepts booking
+- **CONFIRMED → COMPLETED**: Service completed
+- **Any → CANCELLED**: Cancellation (rules apply)
+- **No other transitions allowed**
 
-# Run tests
-./gradlew :backend:booking-service:test
-```
+## Data Models
 
-## Error Handling
+### Booking
 
-Uses common exception classes:
-- `ResourceNotFoundException`: Booking/review not found
-- `BadRequestException`: Invalid booking data
+Core booking information:
+- `customerId` — Reference to customer
+- `specialistId` — Reference to specialist
+- `serviceType` — Type of service requested
+- `scheduledDate` — Date of service
+- `scheduledTime` — Time slot
+- `status` — PENDING, CONFIRMED, COMPLETED, CANCELLED
+- `address` — Service location
+- `notes` — Special instructions
+- `price` — Agreed price
+- `createdAt`, `updatedAt` — Timestamps
 
-Returns standardized `ApiResponse` wrapper for all responses.
+### Review
+
+Customer feedback after service:
+- `bookingId` — Reference to booking
+- `customerId` — Who wrote the review
+- `specialistId` — Who received the review
+- `rating` — 1-5 stars
+- `comment` — Text feedback
+- `createdAt` — When review was written
+
+Reviews are immutable after 24 hours (no edits allowed).
+
+### Complaint
+
+Customer complaints about specialists:
+- `bookingId` — Related booking
+- `customerId` — Complainant
+- `specialistId` — Accused specialist
+- `type` — Category of complaint
+- `description` — Details
+- `status` — OPEN, UNDER_REVIEW, RESOLVED, DISMISSED
+- `resolution` — Admin notes
+
+## Service Integration
+
+### User Service (Feign Client)
+
+Fetches user details:
+- Customer name/contact for booking
+- Specialist details for display
+- Validates user existence
+
+### Notification Service
+
+Sends emails for:
+- Booking created (to specialist)
+- Booking confirmed (to customer)
+- Booking completed (both parties)
+- Booking cancelled (both parties)
+- New review posted (to specialist)
+
+## Architecture
+
+### Components
+
+**BookingController / ReviewController**
+- REST endpoints
+- Request validation
+- Access control checks
+
+**BookingService / ReviewService**
+- Business logic
+- Status transition validation
+- Transaction management
+
+**BookingRepository / ReviewRepository**
+- Data access
+- Custom queries for filtering
+
+**DTOs** (Java Records)
+- Request/response objects
+- Validation annotations
+
+**Mapper** (MapStruct)
+- Entity ↔ DTO conversion
+
+## Database
+
+**Collections**:
+- `bookings` — All booking records
+- `reviews` — Customer reviews
+- `complaints` — Customer complaints
+
+Indexes:
+- `customerId` — For customer booking queries
+- `specialistId` — For specialist booking queries
+- `status` — For status-based filtering
+
+## Dependencies
+
+- Spring Boot Web
+- Spring Data MongoDB
+- Spring Validation
+- MapStruct
+- OpenFeign (for user-service calls)
+- Common module
+- User Service Client module
+
+See `build.gradle.kts` for versions.
+
+## Configuration
+
+Environment variables:
+- `MONGODB_URI` — Database connection
+- `USER_SERVICE_URL` — For Feign client
+- `NOTIFICATION_SERVICE_URL` — For email notifications
+
+## Status Update Rules
+
+When updating booking status:
+
+1. **PENDING → CONFIRMED**: Specialist only, must be available
+2. **CONFIRMED → COMPLETED**: Specialist only, after service date
+3. **Any → CANCELLED**:
+   - Customer can cancel own bookings
+   - Specialist can cancel own bookings
+   - Admin can cancel any booking
+   - Cannot cancel already COMPLETED bookings
+
+## Review Rules
+
+- Only customers can write reviews
+- Only for COMPLETED bookings
+- One review per booking
+- Editable within 24 hours
+- Specialist can respond (not edit)
+
+## Links
+
+- Service source: `backend/booking-service/`
+- Feign client usage: See `UserServiceClient` calls
+- DTOs: `backend/booking-service/src/main/java/.../dto/`
+- API design: [../standards/api-design.md](../standards/api-design.md)

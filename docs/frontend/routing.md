@@ -1,255 +1,200 @@
 # Routing
 
-React Router v7 with role-based route protection.
+React Router 7 configuration for role-based navigation.
 
-## Router Configuration
+## Overview
 
-```typescript
-// App.tsx
-import { createBrowserRouter, Navigate, RouterProvider } from 'react-router'
-import { useAuthStore } from './features/auth/store'
-import { ProtectedRoute } from './routes/ProtectedRoute'
-import RootLayout from './routes/RootLayout'
-
-const router = createBrowserRouter([
-  // Landing page - standalone
-  { path: '/', element: <HomePage /> },
-  
-  // Public routes with layout
-  {
-    element: <RootLayout />,
-    children: [
-      { path: 'login', element: <LoginPage /> },
-      { path: 'signup', element: <SignupPage /> },
-      { path: 'specialists', element: <BrowseSpecialists /> },
-      { path: 'specialists/:id', element: <SpecialistProfile /> },
-      { path: '*', element: <NotFoundPage /> }
-    ]
-  },
-  
-  // Customer routes (protected)
-  {
-    path: '/customer',
-    element: (
-      <ProtectedRoute allowedRoles={['customer']}>
-        <CustomerLayout />
-      </ProtectedRoute>
-    ),
-    children: [
-      { path: 'dashboard', element: <CustomerDashboard /> },
-      { path: 'specialists', element: <BrowseSpecialists /> },
-      { path: 'bookings', element: <CustomerBookings /> },
-      { path: 'bookings/:id', element: <CustomerBookingDetail /> },
-      { path: 'profile', element: <CustomerProfile /> },
-      { index: true, element: <Navigate to="dashboard" replace /> }
-    ]
-  },
-  
-  // Specialist routes (protected)
-  {
-    path: '/specialist',
-    element: (
-      <ProtectedRoute allowedRoles={['specialist']}>
-        <SpecialistLayout />
-      </ProtectedRoute>
-    ),
-    children: [
-      { path: 'dashboard', element: <SpecialistDashboard /> },
-      { path: 'appointments', element: <SpecialistAppointments /> },
-      { path: 'appointments/:id', element: <SpecialistAppointmentDetail /> },
-      { path: 'profile', element: <SpecialistProfile /> },
-      { index: true, element: <Navigate to="dashboard" replace /> }
-    ]
-  }
-])
-```
-
-## Protected Route Component
-
-```typescript
-// routes/ProtectedRoute.tsx
-import type { ReactNode } from 'react'
-import { Navigate } from 'react-router'
-import { useAuthStore } from '@/features/auth/store'
-
-interface ProtectedRouteProps {
-  children: ReactNode
-  allowedRoles: string[]
-}
-
-export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
-  const { isAuthenticated, user } = useAuthStore()
-  
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />
-  }
-  
-  if (!allowedRoles.includes(user?.role || '')) {
-    return <Navigate to="/" replace />
-  }
-  
-  return <>{children}</>
-}
-```
-
-## Root Layout
-
-```typescript
-// routes/RootLayout.tsx
-import { Outlet } from 'react-router'
-import { Navbar } from '@/components/Navbar'
-import { Footer } from '@/components/Footer'
-
-export default function RootLayout() {
-  return (
-    <div className="min-h-screen flex flex-col">
-      <Navbar />
-      <main className="flex-1">
-        <Outlet />
-      </main>
-      <Footer />
-    </div>
-  )
-}
-```
-
-## Feature Layouts
-
-Customer and specialist layouts include sidebar navigation:
-
-```typescript
-// features/customer/Layout.tsx
-import { Outlet, NavLink } from 'react-router'
-
-export default function CustomerLayout() {
-  return (
-    <div className="flex min-h-screen">
-      <aside className="w-64 bg-gray-50 border-r">
-        <nav className="p-4 space-y-2">
-          <NavLink to="/customer/dashboard" className={...}>
-            Dashboard
-          </NavLink>
-          <NavLink to="/customer/bookings" className={...}>
-            My Bookings
-          </NavLink>
-          <NavLink to="/customer/profile" className={...}>
-            Profile
-          </NavLink>
-        </nav>
-      </aside>
-      <main className="flex-1 p-6">
-        <Outlet />
-      </main>
-    </div>
-  )
-}
-```
-
-## Redirect Components
-
-Smart redirects based on user role:
-
-```typescript
-// Dashboard redirect
-function DashboardRedirect() {
-  const { user } = useAuthStore()
-  if (!user) return <Navigate to="/login" replace />
-  return <Navigate to={`/${user.role}/dashboard`} replace />
-}
-
-// Bookings redirect
-function BookingsRedirect() {
-  const { user } = useAuthStore()
-  if (!user) return <Navigate to="/login" replace />
-  if (user.role === 'customer') return <Navigate to="/customer/bookings" replace />
-  if (user.role === 'specialist') return <Navigate to="/specialist/appointments" replace />
-  return <Navigate to="/" replace />
-}
-
-// Profile redirect
-function ProfileRedirect() {
-  const { user } = useAuthStore()
-  if (!user) return <Navigate to="/login" replace />
-  return <Navigate to={`/${user.role}/profile`} replace />
-}
-```
+React Router 7 with data API pattern:
+- Declarative route definitions
+- Nested routes for layouts
+- Protected routes with authentication
+- Role-based access control
 
 ## Route Structure
 
-| Path | Access | Description |
-|------|--------|-------------|
-| `/` | Public | Home page |
-| `/login` | Public | Login form |
-| `/signup` | Public | Registration |
-| `/specialists` | Public | Browse specialists |
-| `/specialists/:id` | Public | Specialist profile |
-| `/dashboard` | Redirect | → /customer/dashboard or /specialist/dashboard |
-| `/bookings` | Redirect | → /customer/bookings or /specialist/appointments |
-| `/profile` | Redirect | → /customer/profile or /specialist/profile |
-| `/customer/*` | Customer only | Customer dashboard area |
-| `/specialist/*` | Specialist only | Specialist dashboard area |
-| `*` | All | 404 Not Found |
-
-## Navigation Patterns
-
-### Programmatic Navigation
-
-```typescript
-import { useNavigate } from 'react-router'
-
-function LoginForm() {
-  const navigate = useNavigate()
-  
-  const handleLogin = async (credentials) => {
-    await login(credentials)
-    navigate('/dashboard')
-  }
-}
+```
+/                    # Home (public)
+/login               # Login (public)
+/signup              # Signup (public)
+/specialists         # Browse specialists (public)
+/specialists/:id     # Specialist profile (public)
+/customer/*          # Customer portal (protected)
+/specialist/*        # Specialist portal (protected)
+/dashboard           # Redirect based on role
+/bookings            # Redirect based on role
+/profile             # Redirect based on role
 ```
 
-### Link with State
+## Route Types
 
-```typescript
-<Link to="/bookings" state={{ from: location }}>
-  View Bookings
-</Link>
+### Public Routes
 
-// Access in target component
-import { useLocation } from 'react-router'
-const location = useLocation()
-const from = location.state?.from
-```
+Accessible without authentication:
+- `/` — Home page
+- `/login` — Login form
+- `/signup` — Registration form
+- `/specialists` — Browse specialists
+- `/specialists/:id` — Specialist profile
 
-### URL Parameters
+### Protected Routes
 
-```typescript
-// Route definition
-{ path: 'specialists/:id', element: <SpecialistProfile /> }
+Require authentication:
 
-// Access parameter
-import { useParams } from 'react-router'
+**Customer Portal** (`/customer/*`):
+- `/customer/dashboard` — Customer dashboard
+- `/customer/bookings` — My bookings
+- `/customer/bookings/:id` — Booking details
+- `/customer/profile` — Edit profile
 
-function SpecialistProfile() {
-  const { id } = useParams()
-  // Fetch specialist with id
-}
-```
+**Specialist Portal** (`/specialist/*`):
+- `/specialist/dashboard` — Specialist dashboard
+- `/specialist/appointments` — My appointments
+- `/specialist/appointments/:id` — Appointment details
+- `/specialist/profile` — Edit profile
+
+### Smart Redirects
+
+Routes that redirect based on role:
+- `/dashboard` → `/customer/dashboard` or `/specialist/dashboard`
+- `/bookings` → `/customer/bookings` or `/specialist/appointments`
+- `/profile` → `/customer/profile` or `/specialist/profile`
+
+## Route Components
+
+### RootLayout
+
+Main layout for all routes:
+- Navigation header
+- Footer
+- Outlet for page content
+
+### CustomerLayout
+
+Layout for customer portal:
+- Sidebar navigation
+- Customer-specific menu
+- Protected (requires CUSTOMER role)
+
+### SpecialistLayout
+
+Layout for specialist portal:
+- Sidebar navigation
+- Specialist-specific menu
+- Protected (requires SPECIALIST role)
+
+### ProtectedRoute
+
+Wrapper for protected routes:
+- Checks authentication
+- Validates role
+- Redirects to login if not authenticated
+
+## Authentication Flow
+
+1. User logs in via `/login`
+2. Auth store updates with tokens and user info
+3. Router redirects to appropriate dashboard
+4. Protected routes check auth on each navigation
+
+## Role-Based Access
+
+Role extracted from JWT token:
+- `CUSTOMER` — Access to customer portal
+- `SPECIALIST` — Access to specialist portal
+- `ADMIN` — Future admin dashboard
+
+If user tries to access wrong role's routes:
+- Redirect to their own dashboard
+- Or show 403 Forbidden page
+
+## Route Configuration
+
+Routes defined in `App.tsx` using `createBrowserRouter`.
+
+See `frontend/src/App.tsx` for implementation.
 
 ## Lazy Loading
 
-For future optimization:
+Route components can be lazy loaded for better performance:
+- Use `React.lazy()` for page components
+- Show loading spinner while loading
+- Split by route for optimal bundle size
+
+## Navigation
+
+### Programmatic Navigation
+
+Use `useNavigate` hook from React Router.
+
+See React Router docs for examples.
+
+### Link Component
+
+Use `Link` component for declarative navigation:
 
 ```typescript
-const CustomerDashboard = lazy(() => 
-  import('./features/customer/Dashboard')
-)
+import { Link } from 'react-router-dom';
 
-{
-  path: 'dashboard',
-  element: (
-    <Suspense fallback={<Spinner />}>
-      <CustomerDashboard />
-    </Suspense>
-  )
-}
+<Link to="/specialists">Browse Specialists</Link>
 ```
+
+### Navigation with State
+
+Pass state when navigating:
+
+```typescript
+navigate('/booking/123', { state: { from: 'search' } });
+```
+
+## URL Parameters
+
+Access route parameters:
+
+```typescript
+import { useParams } from 'react-router-dom';
+
+const { id } = useParams(); // /specialists/:id
+```
+
+## Query Parameters
+
+Access and set query params:
+
+```typescript
+import { useSearchParams } from 'react-router-dom';
+
+const [searchParams, setSearchParams] = useSearchParams();
+const category = searchParams.get('category');
+```
+
+## Best Practices
+
+**Route Organization:**
+- Keep route definitions in one place (App.tsx)
+- Use nested routes for layouts
+- Group related routes
+
+**Protected Routes:**
+- Always check auth in ProtectedRoute wrapper
+- Validate role, not just authentication
+- Redirect to login with return URL
+
+**Performance:**
+- Lazy load page components
+- Preload routes on hover (optional)
+- Keep layout components lightweight
+
+## 404 Handling
+
+Catch-all route for undefined paths:
+
+```typescript
+{ path: '*', element: <NotFoundPage /> }
+```
+
+## Links
+
+- Route definitions: `frontend/src/App.tsx`
+- Layout components: `frontend/src/routes/`
+- Protected route logic: `frontend/src/routes/ProtectedRoute.tsx`
+- React Router docs: https://reactrouter.com/

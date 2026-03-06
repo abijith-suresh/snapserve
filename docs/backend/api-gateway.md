@@ -1,330 +1,158 @@
 # API Gateway
 
-The API Gateway is the entry point for all client requests. It handles routing, authentication, CORS, and rate limiting.
+Entry point for all client requests. Handles routing, authentication, CORS, and rate limiting.
+
+## Purpose
+
+The API Gateway sits between the frontend and microservices:
+- Routes requests to appropriate services
+- Validates JWT tokens on protected routes
+- Handles cross-origin requests (CORS)
+- Applies rate limiting
+- Provides single entry point for all APIs
 
 ## Responsibilities
 
-- **Routing**: Direct requests to appropriate microservices
-- **Authentication**: Validate JWT tokens on protected routes
-- **Authorization**: Check user roles for endpoint access
-- **CORS**: Handle cross-origin requests from frontend
-- **Rate Limiting**: Prevent abuse
+### Routing
+
+Routes incoming requests to the correct microservice based on URL path:
+
+- `/api/v1/auth/**` → Auth Service (port 9000)
+- `/api/v1/customers/**` → User Service (port 9001)
+- `/api/v1/specialists/**` → User Service (port 9001)
+- `/api/v1/bookings/**` → Booking Service (port 9002)
+- `/api/v1/reviews/**` → Booking Service (port 9002)
+- `/api/v1/notifications/**` → Notification Service (port 9003)
+
+Configuration in: `backend/api-gateway/src/main/resources/application.yml`
+
+### Authentication
+
+Validates JWT tokens on all protected routes:
+- Extracts token from Authorization header
+- Validates signature and expiration
+- Extracts user ID and role from token
+- Adds user info to request headers for downstream services
+
+Public endpoints (no auth required):
+- POST `/api/v1/auth/login`
+- POST `/api/v1/auth/register`
+- POST `/api/v1/auth/refresh`
+
+### Authorization
+
+Checks user roles for endpoint access:
+- Customer endpoints require CUSTOMER role
+- Specialist endpoints require SPECIALIST role
+- Admin endpoints require ADMIN role
+
+Role validation happens after token validation.
+
+### CORS
+
+Handles cross-origin requests from frontend:
+- Configured via `ALLOWED_ORIGINS` environment variable
+- Applied to all routes uniformly
+- Credentials (cookies) allowed
+
+**Important**: Never add `@CrossOrigin` annotations to controllers in other services.
+
+### Rate Limiting
+
+Prevents API abuse:
+- Default: 100 requests per minute per client
+- Returns 429 status when limit exceeded
+- Includes rate limit headers in responses
 
 ## Architecture
 
-```
-Client Request
-    │
-    ▼
-CORS Filter
-    │
-    ▼
-JWT Authentication Filter
-    │
-    ▼
-Role Authorization Filter
-    │
-    ▼
-Route to Service
-```
+Request flow through gateway:
 
-## Key Components
-
-### 1. Route Configuration
-
-Routes defined in `application.yml`:
-
-```yaml
-spring:
-  cloud:
-    gateway:
-      routes:
-        - id: auth-service
-          uri: http://auth-service:9000
-          predicates:
-            - Path=/api/v1/auth/**
-          
-        - id: user-service
-          uri: http://user-service:9001
-          predicates:
-            - Path=/api/v1/customers/**, /api/v1/specialists/**, /api/v1/admins/**
-          
-        - id: booking-service
-          uri: http://booking-service:9002
-          predicates:
-            - Path=/api/v1/bookings/**, /api/v1/reviews/**
-```
-
-### 2. JWT Validation Filter
-
-Validates Bearer tokens on incoming requests:
-
-```java
-@Component
-public class JwtAuthenticationFilter implements GlobalFilter {
-    
-    @Override
-    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-        String path = exchange.getRequest().getURI().getPath();
-        
-        // Skip auth for open endpoints
-        if (isOpenEndpoint(path)) {
-            return chain.filter(exchange);
-        }
-        
-        String token = extractToken(exchange);
-        if (token == null || !jwtUtils.validateToken(token)) {
-            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-            return exchange.getResponse().setComplete();
-        }
-        
-        // Add user info to headers for downstream services
-        exchange.getRequest().mutate()
-            .header("X-User-Id", jwtUtils.extractUserId(token))
-            .header("X-User-Role", jwtUtils.extractRole(token))
-            .build();
-        
-        return chain.filter(exchange);
-    }
-}
-```
-
-### 3. Open Endpoints
-
-These endpoints don't require authentication:
-
-```java
-public static final List<String> OPEN_ENDPOINTS = Arrays.asList(
-    "/api/v1/auth/login",
-    "/api/v1/auth/register",
-    "/api/v1/auth/refresh"
-);
-```
-
-### 4. Role-Based Access
-
-Verifies users have required roles:
-
-```java
-private boolean hasRequiredRole(String roles, String path) {
-    List<String> roleList = Arrays.asList(roles.split(","));
-    
-    if (path.startsWith("/api/v1/customers")) {
-        return roleList.contains("CUSTOMER");
-    }
-    if (path.startsWith("/api/v1/specialists")) {
-        return roleList.contains("SPECIALIST");
-    }
-    if (path.startsWith("/api/v1/admins")) {
-        return roleList.contains("ADMIN");
-    }
-    return true;
-}
-```
-
-## CORS Configuration
-
-CORS is configured **only** at gateway:
-
-```java
-@Configuration
-public class CorsConfig {
-    
-    @Bean
-    public CorsWebFilter corsWebFilter() {
-        CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(Arrays.asList("http://localhost:3000"));
-        config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(Arrays.asList("*"));
-        config.setAllowCredentials(true);
-        
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
-        
-        return new CorsWebFilter(source);
-    }
-}
-```
-
-**Important:** Never use `@CrossOrigin` on downstream controllers.
+1. **CORS Filter** — Handle preflight and origin checks
+2. **JWT Authentication Filter** — Validate token (if required)
+3. **Role Authorization Filter** — Check role permissions
+4. **Routing** — Forward to appropriate service
+5. **Response** — Return service response to client
 
 ## Configuration
 
-### application.yml
+Key configuration files:
+- `application.yml` — Routes, JWT settings, CORS origins
+- `RouteValidator.java` — Public endpoint definitions
+- Security filter configuration
 
-```yaml
-server:
-  port: 9090
+Environment variables:
+- `JWT_SECRET` — Secret for token validation
+- `ALLOWED_ORIGINS` — CORS allowed origins
 
-spring:
-  application:
-    name: api-gateway
-  
-  cloud:
-    gateway:
-      discovery:
-        locator:
-          enabled: false  # No Eureka
-      routes:
-        # Auth service
-        - id: auth-service
-          uri: http://auth-service:9000
-          predicates:
-            - Path=/api/v1/auth/**
-        
-        # User service
-        - id: user-service
-          uri: http://user-service:9001
-          predicates:
-            - Path=/api/v1/customers/**,/api/v1/specialists/**,/api/v1/admins/**
-          filters:
-            - JwtAuthFilter
-        
-        # Booking service
-        - id: booking-service
-          uri: http://booking-service:9002
-          predicates:
-            - Path=/api/v1/bookings/**,/api/v1/reviews/**
-          filters:
-            - JwtAuthFilter
-        
-        # Notification service
-        - id: notification-service
-          uri: http://notification-service:9003
-          predicates:
-            - Path=/api/v1/notifications/**
-          filters:
-            - JwtAuthFilter
+## Dependencies
 
-jwt:
-  secret: ${JWT_SECRET}
+- Spring Cloud Gateway — Routing and filtering
+- JJWT — Token parsing and validation
+- Spring Boot Actuator — Health checks
 
-cors:
-  allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000}
-```
-
-## Request Flow
-
-### 1. Public Request
-
-```
-POST /api/v1/auth/login
-    │
-    ▼
-CORS Check
-    │
-    ▼
-Skip JWT (open endpoint)
-    │
-    ▼
-Route to auth-service:9000
-```
-
-### 2. Protected Request
-
-```
-GET /api/v1/customers/123
-Authorization: Bearer <token>
-    │
-    ▼
-CORS Check
-    │
-    ▼
-Validate JWT Token
-    │
-    ▼
-Extract User ID and Role
-    │
-    ▼
-Check Role (CUSTOMER required)
-    │
-    ▼
-Add X-User-Id, X-User-Role headers
-    │
-    ▼
-Route to user-service:9001
-```
+See `backend/api-gateway/build.gradle.kts` for complete list.
 
 ## Error Handling
 
 ### Invalid Token
 
-```json
-{
-  "success": false,
-  "data": null,
-  "message": "Invalid or expired token",
-  "timestamp": "2024-01-15T10:30:00Z"
-}
-```
+Returns 401 Unauthorized when:
+- Token missing on protected endpoint
+- Token expired
+- Token signature invalid
 
 ### Insufficient Permissions
 
-```json
-{
-  "success": false,
-  "data": null,
-  "message": "Access denied. Required role: CUSTOMER",
-  "timestamp": "2024-01-15T10:30:00Z"
-}
-```
+Returns 403 Forbidden when:
+- Valid token but wrong role for endpoint
+- Attempting to access another user's data
 
 ### Service Unavailable
 
-```json
-{
-  "success": false,
-  "data": null,
-  "message": "Service temporarily unavailable",
-  "timestamp": "2024-01-15T10:30:00Z"
-}
-```
-
-## Dependencies
-
-```kotlin
-dependencies {
-    implementation("org.springframework.cloud:spring-cloud-starter-gateway")
-    implementation("io.jsonwebtoken:jjwt-api")
-    runtimeOnly("io.jsonwebtoken:jjwt-impl")
-    runtimeOnly("io.jsonwebtoken:jjwt-jackson")
-}
-```
+Returns 503 when upstream service is down or not responding.
 
 ## Testing
 
 ### Local Testing
 
+Start services:
 ```bash
-# Start services
 docker compose up
+```
 
-# Test public endpoint
+Test public endpoint:
+```bash
 curl http://localhost:9090/api/v1/auth/login \
   -X POST \
   -H "Content-Type: application/json" \
   -d '{"email":"test@test.com","password":"password"}'
+```
 
-# Test protected endpoint (without token)
+Test protected endpoint (should return 401 without token):
+```bash
 curl http://localhost:9090/api/v1/customers/123
-# Should return 401
+```
 
-# Test protected endpoint (with token)
+Test with valid token:
+```bash
 curl http://localhost:9090/api/v1/customers/123 \
   -H "Authorization: Bearer <valid-token>"
 ```
 
 ## Best Practices
 
-1. **Keep gateway lean**: No business logic, just routing and auth
-2. **Stateless**: No session storage in gateway
-3. **Validate early**: Reject bad requests before routing
-4. **Log minimally**: Don't log sensitive headers
-5. **Health checks**: Implement `/actuator/health` endpoint
-6. **Time out**: Set reasonable timeouts for upstream services
+1. **Keep gateway lean** — No business logic, only routing and auth
+2. **Stateless** — No session storage in gateway
+3. **Validate early** — Reject bad requests before routing
+4. **Log minimally** — Don't log sensitive headers or tokens
+5. **Health checks** — Implement `/actuator/health` endpoint
+6. **Timeouts** — Set reasonable timeouts for upstream services
 
 ## Links
 
-- [Architecture Overview](../architecture/overview.md)
-- [Service Interactions](../architecture/service-interactions.md)
-- [Security Guidelines](../standards/security.md)
+- Gateway source: `backend/api-gateway/`
+- Route configuration: `backend/api-gateway/src/main/resources/application.yml`
+- Security filters: `backend/api-gateway/src/main/java/.../config/`
+- Architecture overview: [../architecture/overview.md](../architecture/overview.md)
+- Security guidelines: [../standards/security.md](../standards/security.md)

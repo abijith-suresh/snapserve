@@ -19,170 +19,97 @@ Security best practices for SnapServe development.
 
 ### Token Validation
 
-```java
-// Gateway validates tokens before routing
-@Component
-public class JwtAuthenticationFilter extends OncePerRequestFilter {
-    
-    @Override
-    protected void doFilterInternal(HttpServletRequest request, 
-            HttpServletResponse response, FilterChain chain) {
-        String token = extractToken(request);
-        if (token != null && jwtUtils.validateToken(token)) {
-            Authentication auth = createAuthentication(token);
-            SecurityContextHolder.getContext().setAuthentication(auth);
-        }
-        chain.doFilter(request, response);
-    }
-}
-```
+Gateway validates tokens before routing. See `backend/api-gateway` for implementation.
 
 ### Password Security
 
-**Backend:**
-- Use BCrypt with strength 10+ for hashing
+**Requirements:**
+- Minimum 8 characters
+- At least one uppercase letter
+- At least one lowercase letter
+- At least one number
+- At least one special character (@$!%*?&)
+
+**Hashing:**
+- Use BCrypt with strength 10+
 - Never store plain text passwords
-- Implement account lockout after 5 failed attempts
-- Require strong passwords (min 8 chars, mixed case, numbers, symbols)
+- Implementation: See `backend/auth-service` PasswordEncoder configuration
 
-```java
-@Bean
-public PasswordEncoder passwordEncoder() {
-    return new BCryptPasswordEncoder(10);
-}
-```
+### Account Lockout
 
-**Validation:**
-```java
-@NotBlank(message = "Password is required")
-@Size(min = 8, message = "Password must be at least 8 characters")
-@Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]+$",
-         message = "Password must contain uppercase, lowercase, number, and special character")
-String password;
-```
+Security feature to prevent brute force attacks:
+- **Max attempts:** 5 failed logins
+- **Lockout duration:** 30 minutes
+- **Reset:** Successful login or admin unlock
+
+Implementation: See `backend/auth-service` account security logic.
 
 ## Authorization
 
 ### Role-Based Access Control (RBAC)
 
-```java
-public enum Role {
-    CUSTOMER,
-    SPECIALIST,
-    ADMIN
-}
-```
+**Roles:**
+- `CUSTOMER` — Can book appointments, manage profile
+- `SPECIALIST` — Can manage availability, view appointments
+- `ADMIN` — Can approve specialists, manage users
 
 ### Endpoint Protection
 
 **Controller Level:**
-```java
-@PreAuthorize("hasRole('CUSTOMER')")
-@PostMapping("/bookings")
-public ResponseEntity<ApiResponse<BookingDto>> createBooking(...) { }
-
-@PreAuthorize("hasRole('SPECIALIST')")
-@GetMapping("/specialists/{id}/appointments")
-public ResponseEntity<ApiResponse<List<BookingDto>>> getAppointments(...) { }
-```
+Use `@PreAuthorize` annotations:
+- `@PreAuthorize("hasRole('CUSTOMER')")` — Customer only
+- `@PreAuthorize("hasRole('SPECIALIST')")` — Specialist only
+- `@PreAuthorize("hasRole('ADMIN')")` — Admin only
 
 **Gateway Level:**
-```java
-// RouteValidator.java - Define public endpoints
-public static final List<String> OPEN_ENDPOINTS = Arrays.asList(
-    "/api/v1/auth/login",
-    "/api/v1/auth/register",
-    "/api/v1/auth/refresh"
-);
-```
+Public endpoints configured in gateway route validator.
 
 ### Data Ownership
 
 Always verify users can only access their own data:
-
-```java
-@GetMapping("/bookings/{id}")
-public ResponseEntity<ApiResponse<BookingDto>> getBooking(
-        @PathVariable String id,
-        @AuthenticationPrincipal UserDetails user) {
-    
-    Booking booking = bookingService.getBooking(id);
-    
-    // Verify ownership
-    if (!booking.getCustomerId().equals(user.getId()) && 
-        !booking.getSpecialistId().equals(user.getId())) {
-        throw new AccessDeniedException("Not authorized to view this booking");
-    }
-    
-    return ResponseEntity.ok(ApiResponse.success(booking));
-}
-```
+- Check user ID from JWT against resource owner
+- Throw `AccessDeniedException` if not authorized
+- Implementation: See `backend/booking-service` booking access control
 
 ## Input Validation
 
 ### Bean Validation
 
-Validate all inputs with Bean Validation:
+Validate all inputs with Bean Validation annotations:
+- `@NotBlank` — String not null and not empty
+- `@NotNull` — Value not null
+- `@Email` — Valid email format
+- `@Size` — String length constraints
+- `@Pattern` — Regex validation
 
-```java
-public record CreateUserRequest(
-    @NotBlank(message = "Email is required")
-    @Email(message = "Invalid email format")
-    @Size(max = 255, message = "Email too long")
-    String email,
-    
-    @NotBlank(message = "Name is required")
-    @Size(min = 2, max = 100, message = "Name must be 2-100 characters")
-    @Pattern(regexp = "^[a-zA-Z\\s]+$", message = "Name contains invalid characters")
-    String name
-) {}
-```
+### Injection Prevention
 
-### SQL/NoSQL Injection Prevention
+**MongoDB:**
+- Use Spring Data repositories (parameterized queries)
+- Never concatenate user input into queries
+- See repository interfaces in `backend/*/repository/`
 
-**Use Spring Data repositories:**
-```java
-// Safe - uses parameterized queries
-@Query("{ 'email': ?0 }")
-Optional<User> findByEmail(String email);
-
-// NEVER do this - vulnerable to injection
-@Query("{ 'email': '" + email + "' }")  // ❌ DON'T
-```
-
-### XSS Prevention
-
-**Backend:**
-- Escape all output in email templates
-- Content-Type headers on all responses
-- Validate and sanitize file uploads
-
-**Frontend:**
-- React automatically escapes JSX (good!)
-- Don't use `dangerouslySetInnerHTML`
-- Validate URLs before navigation
+**XSS Prevention:**
+- Backend: Escape output in email templates
+- Frontend: React automatically escapes JSX (good!)
+- Never use `dangerouslySetInnerHTML`
 
 ## Secrets Management
 
 ### Environment Variables
 
 **Never hardcode secrets:**
+- JWT secret
+- Database credentials
+- Email credentials
+- All stored in `.env` file
 
-```java
-// ❌ DON'T
-private static final String JWT_SECRET = "mysecretkey123";
+**Required environment variables:**
+- `JWT_SECRET` — 64+ character secret
+- `MONGODB_URI` — Database connection string
+- `GMAIL_APP_PASSWORD` — Email service password
 
-// ✅ DO
-@Value("${jwt.secret}")
-private String jwtSecret;
-```
-
-**Required in .env:**
-```bash
-JWT_SECRET=your-64-character-secret-here-minimum...
-MONGODB_URI=mongodb://localhost:27017/snapserve
-GMAIL_APP_PASSWORD=your-app-password
-```
+See `.env.example` for complete list.
 
 ### Secret Rotation
 
@@ -195,88 +122,45 @@ GMAIL_APP_PASSWORD=your-app-password
 
 **Only at Gateway:**
 
-```java
-@Configuration
-public class CorsConfig {
-    
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(Arrays.asList("http://localhost:3000"));
-        config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE"));
-        config.setAllowedHeaders(Arrays.asList("*"));
-        config.setAllowCredentials(true);
-        
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
-        return source;
-    }
-}
-```
+Never use `@CrossOrigin` on controllers.
 
-**Never use @CrossOrigin on controllers.**
+Configuration:
+- Allowed origins: Via `ALLOWED_ORIGINS` env var
+- Allowed methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+- Credentials: Allowed
+
+Implementation: See `backend/api-gateway` CORS configuration.
 
 ## Rate Limiting
 
-Implement rate limiting at gateway:
+Implement rate limiting at gateway to prevent abuse:
+- Default: 100 requests per minute per client
+- Status 429 returned when exceeded
+- Headers indicate limit status
 
-```java
-@Component
-public class RateLimitingFilter extends OncePerRequestFilter {
-    
-    private final Map<String, Bucket> buckets = new ConcurrentHashMap<>();
-    
-    @Override
-    protected void doFilterInternal(HttpServletRequest request,
-            HttpServletResponse response, FilterChain chain) {
-        
-        String clientId = getClientIdentifier(request);
-        Bucket bucket = buckets.computeIfAbsent(clientId, this::createBucket);
-        
-        if (bucket.tryConsume(1)) {
-            chain.doFilter(request, response);
-        } else {
-            response.setStatus(429);
-            response.getWriter().write("Rate limit exceeded");
-        }
-    }
-    
-    private Bucket createBucket(String key) {
-        return Bucket.builder()
-            .addLimit(limit -> limit.capacity(100).refillIntervally(1, Duration.ofMinutes(1)))
-            .build();
-    }
-}
-```
+Implementation: See `backend/api-gateway` rate limiting filter.
 
 ## Logging Security
 
-**Don't log sensitive data:**
+### Don't Log Sensitive Data
 
-```java
-// ❌ DON'T
-log.info("User login: email={}, password={}", email, password);
+❌ Never log:
+- Passwords
+- JWT tokens
+- Credit card numbers
+- Personal identifiable information (PII)
 
-// ✅ DO
-log.info("User login attempt: email={}", email);
-```
+✅ Do log:
+- User actions (without sensitive data)
+- Error messages (sanitized)
+- Request paths (without query params containing secrets)
 
-**Mask sensitive data:**
+### Mask Sensitive Data
 
-```java
-public String maskEmail(String email) {
-    if (email == null || !email.contains("@")) return email;
-    String[] parts = email.split("@");
-    String local = parts[0];
-    String domain = parts[1];
-    String maskedLocal = local.charAt(0) + "***" + local.charAt(local.length() - 1);
-    return maskedLocal + "@" + domain;
-}
-
-// Usage
-log.info("Password reset requested for: {}", maskEmail(email));
-// Output: Password reset requested for: j***n@example.com
-```
+When logging user information:
+- Mask email: `j***n@example.com`
+- Mask phone: `***-***-1234`
+- Use partial masking for identification without exposure
 
 ## HTTPS/TLS
 
@@ -287,35 +171,27 @@ log.info("Password reset requested for: {}", maskEmail(email));
 - HSTS headers
 
 **Local Development:**
-- HTTP is acceptable for local dev
+- HTTP acceptable for local dev
 - Gateway handles HTTPS termination in production
 
 ## File Uploads
 
 If implementing file uploads:
 
-```java
-@PostMapping("/upload")
-public ResponseEntity<ApiResponse<String>> uploadFile(
-        @RequestParam("file") MultipartFile file) {
-    
-    // Validate file type
-    String contentType = file.getContentType();
-    if (!Arrays.asList("image/jpeg", "image/png").contains(contentType)) {
-        throw new BadRequestException("Invalid file type");
-    }
-    
-    // Validate file size (max 5MB)
-    if (file.getSize() > 5 * 1024 * 1024) {
-        throw new BadRequestException("File too large");
-    }
-    
-    // Store with UUID filename (prevent path traversal)
-    String filename = UUID.randomUUID().toString() + "." + getExtension(file);
-    
-    // Save to storage...
-}
-```
+**Validation:**
+- Validate file type (whitelist allowed types)
+- Validate file size (max limit)
+- Scan for malware
+
+**Storage:**
+- Store with UUID filename (prevent path traversal)
+- Never use original filename directly
+- Store outside web root
+
+**Example validation:**
+- Max size: 5MB
+- Allowed types: image/jpeg, image/png
+- Storage: UUID-based filenames
 
 ## Security Checklist
 
@@ -338,3 +214,9 @@ Before deploying:
 - [OWASP Top 10](https://owasp.org/www-project-top-ten/)
 - [Spring Security Documentation](https://docs.spring.io/spring-security/reference/)
 - [JWT Best Practices](https://tools.ietf.org/html/rfc8725)
+
+## Links
+
+- JWT implementation: `backend/auth-service`
+- Security filters: `backend/api-gateway`
+- Validation examples: `backend/user-service/dto/`

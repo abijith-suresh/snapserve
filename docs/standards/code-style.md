@@ -1,341 +1,110 @@
 # Code Style Standards
 
-This document defines the coding standards for both Java (backend) and TypeScript (frontend).
+Guidelines for Java (backend) and TypeScript (frontend) development.
 
 ## Java Standards
 
-### General Principles
+### Core Principles
 
-- **Java 21** features (records, pattern matching, etc.)
-- **Constructor injection** only (never `@Autowired` field injection)
-- **Java Records** for all DTOs (not Lombok `@Data`)
-- **MapStruct** for DTO mapping
-- **Bean Validation** annotations on all DTO fields
-- **Transactional** on service methods that modify data
+- **Java 21** — Use modern features (records, pattern matching)
+- **Constructor injection only** — Never use `@Autowired` field injection
+- **Java Records for DTOs** — Immutable data transfer objects (not Lombok `@Data`)
+- **MapStruct for mapping** — Automatic DTO conversion
+- **Bean Validation** — All DTO fields must have validation annotations
+- **@Transactional** — Service methods that modify data must be transactional
 
-### Class Structure
+### Patterns
 
-```java
-package com.snapserve.service;
+**DTOs**: Use Java Records with validation annotations
+- Location: `src/main/java/.../dto/`
+- Example implementations: See `backend/user-service/src/main/java/.../dto/`
 
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+**Controllers**: REST endpoints with standard patterns
+- Location: `src/main/java/.../controller/`
+- Example: `UserController.java` in user-service
 
-@Service
-@RequiredArgsConstructor
-@Transactional
-public class UserService {
-    
-    private final UserRepository userRepository;
-    private final UserMapper userMapper;
-    
-    public UserDto createUser(CreateUserRequest request) {
-        User user = userMapper.toEntity(request);
-        User saved = userRepository.save(user);
-        return userMapper.toDto(saved);
-    }
-}
-```
+**Services**: Business logic with transaction boundaries
+- Location: `src/main/java/.../service/`
+- Use `@RequiredArgsConstructor` for dependency injection
 
-### DTO Pattern (Java Records)
+**Repositories**: Spring Data MongoDB
+- Location: `src/main/java/.../repository/`
+- Extend `MongoRepository<Entity, ObjectId>`
 
-```java
-public record CreateUserRequest(
-    @NotBlank(message = "Email is required")
-    @Email(message = "Invalid email format")
-    String email,
-    
-    @NotBlank(message = "Name is required")
-    @Size(min = 2, max = 100, message = "Name must be 2-100 characters")
-    String name,
-    
-    @NotNull(message = "Role is required")
-    Role role
-) {}
-```
-
-**Never use Lombok `@Data` for DTOs.** Records provide:
-- Immutability by default
-- Built-in equals/hashCode/toString
-- Compact syntax
-- Better type safety
-
-### Controller Pattern
-
-```java
-@RestController
-@RequestMapping("/api/v1/users")
-@RequiredArgsConstructor
-public class UserController {
-    
-    private final UserService userService;
-    
-    @PostMapping
-    public ResponseEntity<ApiResponse<UserDto>> createUser(
-            @Valid @RequestBody CreateUserRequest request) {
-        UserDto user = userService.createUser(request);
-        return ResponseEntity.ok(ApiResponse.success(user));
-    }
-    
-    @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<UserDto>> getUser(@PathVariable String id) {
-        UserDto user = userService.getUser(id);
-        return ResponseEntity.ok(ApiResponse.success(user));
-    }
-}
-```
-
-### Entity Pattern
-
-```java
-@Data
-@Document(collection = "users")
-public class User extends Auditable {
-    
-    @Id
-    private ObjectId id;
-    
-    @Indexed(unique = true)
-    private String email;
-    
-    private String name;
-    
-    @Enumerated(EnumType.STRING)
-    private Role role;
-}
-```
-
-**Note:** Entities use Lombok `@Data` (they're mutable), but DTOs use Records.
-
-### Repository Pattern
-
-```java
-@Repository
-public interface UserRepository extends MongoRepository<User, ObjectId> {
-    
-    Optional<User> findByEmail(String email);
-    
-    boolean existsByEmail(String email);
-    
-    List<User> findByRoleAndActiveTrue(Role role);
-}
-```
-
-### MapStruct Mapper
-
-```java
-@Mapper(componentModel = "spring")
-public interface UserMapper {
-    
-    UserDto toDto(User user);
-    
-    User toEntity(CreateUserRequest request);
-    
-    void updateEntity(@MappingTarget User user, UpdateUserRequest request);
-}
-```
-
-### Exception Handling
-
-Use the `GlobalExceptionHandler` from `common` module:
-
-```java
-// In service
-public User getUser(String id) {
-    return userRepository.findById(new ObjectId(id))
-        .orElseThrow(() -> new ResourceNotFoundException("User not found: " + id));
-}
-
-// Don't catch and return null - always throw exceptions
-```
+**Mappers**: MapStruct interfaces for DTO conversion
+- Location: `src/main/java/.../mapper/`
+- Example: `UserMapper.java` in user-service
 
 ### Naming Conventions
 
 - **Classes**: PascalCase (`UserService`, `CreateUserRequest`)
 - **Methods**: camelCase (`createUser`, `findByEmail`)
-- **Constants**: UPPER_SNAKE_CASE (`MAX_RETRY_COUNT`)
+- **Constants**: UPPER_SNAKE_CASE
 - **Packages**: lowercase (`com.snapserve.userservice`)
-- **DTOs**: Suffix with type (`CreateUserRequest`, `UserDto`, `UpdateUserRequest`)
-- **Repositories**: Suffix with `Repository` (`UserRepository`)
-- **Services**: Suffix with `Service` (`UserService`)
-- **Controllers**: Suffix with `Controller` (`UserController`)
-- **Mappers**: Suffix with `Mapper` (`UserMapper`)
+- **DTOs**: Suffix with type (`CreateUserRequest`, `UserDto`)
+- **Repositories**: Suffix with `Repository`
+- **Services**: Suffix with `Service`
+- **Controllers**: Suffix with `Controller`
+- **Mappers**: Suffix with `Mapper`
 
-### Formatting
+### Code Quality Tools
 
-Use **Spotless** with the included configuration:
-
+**Spotless** — Enforces formatting
 ```bash
-./gradlew spotlessCheck   # Check formatting
+./gradlew spotlessCheck   # Verify formatting
 ./gradlew spotlessApply   # Fix formatting
 ```
 
 - 4 spaces indentation
 - No wildcard imports
 - Import order: java, javax, org, com, static
-- No trailing whitespace
+
+### Project Structure
+
+Each service follows this structure:
+```
+src/main/java/com/snapserve/
+├── controller/     # REST endpoints
+├── service/        # Business logic
+├── repository/     # Data access
+├── dto/            # Request/response DTOs (Records)
+├── mapper/         # MapStruct mappers
+├── model/          # Entity classes
+└── config/         # Configuration classes
+```
 
 ## TypeScript Standards
 
-### General Principles
+### Core Principles
 
-- **Strict mode** enabled (no implicit any, strict null checks, etc.)
-- **Explicit types** on function parameters and return types
-- **Interface** for object shapes, **Type** for unions/aliases
-- **const/let** (never var)
-- **async/await** for async operations (no raw promises)
+- **Strict mode** — Full TypeScript strictness (no implicit any, strict null checks)
+- **Explicit types** — Function parameters and return types must be typed
+- **Interface for objects** — Use interfaces for object shapes
+- **Type for unions** — Use type aliases for unions/complex types
+- **const/let only** — Never use `var`
+- **async/await** — For all asynchronous operations
 
-### Component Structure
+### Patterns
 
-```typescript
-// features/users/UserList.tsx
-import { useQuery } from '@tanstack/react-query';
-import { getUsers } from '@/shared/api/users';
+**Components**: React functional components with TypeScript
+- Location: `src/features/` or `src/components/`
+- Example: `src/features/customer/CustomerDashboard.tsx`
 
-interface UserListProps {
-  role: 'customer' | 'specialist';
-}
+**Custom Hooks**: Reusable logic
+- Location: `src/hooks/`
+- Prefix with `use`: `useUser`, `useAuth`
 
-export function UserList({ role }: UserListProps): JSX.Element {
-  const { data: users, isLoading, error } = useQuery({
-    queryKey: ['users', role],
-    queryFn: () => getUsers(role),
-  });
+**State Management**:
+- **Client state**: Zustand stores in `src/features/<feature>/store.ts`
+- **Server state**: React Query hooks in `src/features/<feature>/queries.ts`
 
-  if (isLoading) return <LoadingSpinner />;
-  if (error) return <ErrorMessage error={error} />;
-  if (!users?.length) return <EmptyState />;
+**API Client**: Axios configuration
+- Location: `src/shared/api/client.ts`
+- Base URL configured via environment variable
 
-  return (
-    <ul className="space-y-2">
-      {users.map(user => (
-        <li key={user.id} className="p-4 border rounded">
-          {user.name}
-        </li>
-      ))}
-    </ul>
-  );
-}
-```
-
-### Custom Hooks
-
-```typescript
-// hooks/useUser.ts
-import { useQuery } from '@tanstack/react-query';
-import { getUser } from '@/shared/api/users';
-
-interface UseUserOptions {
-  enabled?: boolean;
-}
-
-export function useUser(userId: string, options: UseUserOptions = {}) {
-  return useQuery({
-    queryKey: ['user', userId],
-    queryFn: () => getUser(userId),
-    enabled: options.enabled ?? true,
-  });
-}
-```
-
-### API Client Pattern
-
-```typescript
-// shared/api/client.ts
-import axios from 'axios';
-
-export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:9090',
-});
-
-apiClient.interceptors.request.use(config => {
-  const token = localStorage.getItem('accessToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-apiClient.interceptors.response.use(
-  response => response,
-  error => {
-    if (error.response?.status === 401) {
-      // Handle token refresh or logout
-    }
-    return Promise.reject(error);
-  }
-);
-```
-
-### Zustand Store Pattern
-
-```typescript
-// features/auth/store.ts
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-
-interface AuthState {
-  user: User | null;
-  isAuthenticated: boolean;
-  login: (user: User) => void;
-  logout: () => void;
-}
-
-export const useAuthStore = create<AuthState>()(
-  persist(
-    set => ({
-      user: null,
-      isAuthenticated: false,
-      login: user => set({ user, isAuthenticated: true }),
-      logout: () => set({ user: null, isAuthenticated: false }),
-    }),
-    { name: 'auth-storage' }
-  )
-);
-```
-
-### Form Handling
-
-```typescript
-// features/auth/LoginForm.tsx
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-
-const loginSchema = z.object({
-  email: z.string().email('Invalid email'),
-  password: z.string().min(8, 'Password must be 8+ characters'),
-});
-
-type LoginFormData = z.infer<typeof loginSchema>;
-
-export function LoginForm(): JSX.Element {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
-  });
-
-  const onSubmit = async (data: LoginFormData): Promise<void> => {
-    // Handle login
-  };
-
-  return (
-    <form onSubmit={handleSubmit(onSubmit)}>
-      <input {...register('email')} />
-      {errors.email && <span>{errors.email.message}</span>}
-      
-      <input type="password" {...register('password')} />
-      {errors.password && <span>{errors.password.message}</span>}
-      
-      <button type="submit">Login</button>
-    </form>
-  );
-}
-```
+**Forms**: React Hook Form + Zod validation
+- Define schemas in `src/shared/types/` or feature folders
+- Example: Login form validation
 
 ### Naming Conventions
 
@@ -347,67 +116,51 @@ export function LoginForm(): JSX.Element {
 - **Files**: Match default export name (`UserList.tsx` exports `UserList`)
 - **Boolean props**: Prefix with verb (`isLoading`, `hasError`, `canEdit`)
 
-### Formatting
+### Code Quality Tools
 
-Use **Biome** for linting and formatting:
-
+**Biome** — Linting and formatting
 ```bash
-bun run lint          # Check linting
-bun run lint:fix      # Fix auto-fixable issues
-bun run format        # Format code
+bun run lint       # Check linting
+bun run lint:fix   # Fix auto-fixable issues
+bun run format     # Format code
 ```
 
 - 2 spaces indentation
-- Single quotes for strings
+- Single quotes
 - Semicolons required
 - Trailing commas (multi-line)
 
-## Import Organization
+### Project Structure
 
-### Java
-
-```java
-// Standard library
-import java.time.LocalDateTime;
-import java.util.Optional;
-
-// Spring
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-// Project
-import com.snapserve.common.model.Auditable;
-import com.snapserve.service.dto.UserDto;
 ```
-
-### TypeScript
-
-```typescript
-// External libraries
-import { useQuery } from '@tanstack/react-query';
-import { z } from 'zod';
-
-// Internal absolute imports (using @ alias)
-import { apiClient } from '@/shared/api/client';
-import { useAuthStore } from '@/features/auth/store';
-
-// Internal relative imports
-import { UserCard } from './UserCard';
+src/
+├── components/ui/     # shadcn/ui components
+├── features/          # Feature modules
+│   ├── auth/         # Auth store
+│   ├── customer/     # Customer portal
+│   └── specialist/   # Specialist portal
+├── pages/            # Public pages
+├── routes/           # Route layouts
+├── shared/           # Shared resources
+│   ├── api/         # Axios client
+│   └── types/       # TypeScript types
+├── hooks/            # Custom React hooks
+└── lib/              # Utilities
 ```
 
 ## Documentation
 
-### Java
+### Comments
 
-- **Public APIs**: JavaDoc for public methods
-- **Complex logic**: Inline comments explaining "why", not "what"
-- **TODOs**: Use `// TODO: description` format
+**Java**:
+- Public APIs: JavaDoc for public methods
+- Complex logic: Inline comments explaining "why", not "what"
+- Use `// TODO: description` format
 
-### TypeScript
-
-- **Public functions**: TSDoc for exported functions
-- **Complex types**: Explain purpose in comments
-- **TODOs**: Use `// TODO: description` format
+**TypeScript**:
+- Public functions: TSDoc for exported functions
+- Complex types: Explain purpose in comments
+- Use `// TODO: description` format
 
 ## Code Review Checklist
 
@@ -423,3 +176,8 @@ Before submitting PR:
 - [ ] DTOs use Java Records (not Lombok @Data)
 - [ ] Constructor injection used (no field injection)
 - [ ] ApiResponse wrapper used for all endpoints
+
+## Links
+
+- Backend examples: See `backend/user-service/src/main/java/` (reference implementation)
+- Frontend examples: See `frontend/src/features/` 

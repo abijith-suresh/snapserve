@@ -1,125 +1,142 @@
 # Notification Service
 
-Email notification service for the SnapServe platform. Port: 9003.
+Sends email notifications to users.
 
-## Status: Rebuilding
+## Purpose
 
-This service is currently under reconstruction. The basic structure exists but email functionality is being redesigned.
-
-## Overview
-
-The Notification Service handles all email communications:
+Handles outbound email communication:
 - Welcome emails for new registrations
-- Booking confirmations
-- Appointment reminders
-- Password reset notifications
+- Booking confirmations and updates
+- Status change notifications
+- Review notifications
 
-## Architecture
+## Current Status
 
-Spring Boot application using Gmail SMTP for email delivery. Simple REST API for triggering notifications.
+**Rebuilding in progress.**
 
-## Configuration
-
-```yaml
-# application.yml
-server:
-  port: 9003
-
-spring:
-  mail:
-    host: smtp.gmail.com
-    port: 587
-    username: ${GMAIL_USERNAME}
-    password: ${GMAIL_APP_PASSWORD}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-```
-
-## Environment Variables
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `GMAIL_USERNAME` | Yes | Gmail address for sending |
-| `GMAIL_APP_PASSWORD` | Yes | Gmail App Password (not regular password) |
-
-## API Endpoints
-
-Currently minimal - full API being rebuilt.
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/actuator/health` | Health check |
+The notification service is being refactored to improve reliability and add new features. The previous implementation has been removed and a new version is being developed.
 
 ## Planned Features
 
-- Template-based email rendering (Thymeleaf)
-- Queue-based async processing
-- Email history tracking
-- Multi-provider support (SendGrid, AWS SES)
-- Webhook handling for delivery status
+### Email Templates
 
-## Key Classes
+HTML email templates using Thymeleaf:
+- Welcome email (new user registration)
+- Booking confirmation (to customer and specialist)
+- Booking status updates
+- Review notifications
+- Password reset emails
 
-| Class | Purpose |
-|-------|---------|
-| `NotificationController` | REST endpoints |
-| `EmailService` | Email sending logic |
-| `NotificationTemplate` | Email templates |
+### Queue Processing
+
+Asynchronous email sending:
+- Emails queued for processing
+- Retry logic for failed sends
+- Rate limiting to prevent spam
+
+### Supported Providers
+
+Initial implementation:
+- Gmail SMTP
+- Configurable via environment variables
+
+Future additions:
+- SendGrid
+- AWS SES
+- Mailgun
+
+## API Endpoints
+
+### POST /api/v1/notifications/email
+
+Send email notification.
+
+**Access**: Internal (other services only)
+
+**Request**:
+- to (string) — Recipient email
+- subject (string) — Email subject
+- template (string) — Template name
+- data (object) — Template variables
+
+**Response**: 202 Accepted (queued for sending)
+
+### POST /api/v1/notifications/sms
+
+Send SMS notification.
+
+**Status**: Planned for future release
 
 ## Integration
 
-Called by other services via REST:
-- **Auth Service**: Welcome email on registration
-- **User Service**: Profile update confirmations
-- **Booking Service**: Booking confirmations and reminders
+Other services call notification service via HTTP:
 
-## Building
+**Auth Service calls:**
+- Welcome email on registration
 
-```bash
-# Build this service only
-./gradlew :backend:notification-service:build
+**Booking Service calls:**
+- Booking confirmation emails
+- Status update notifications
 
-# Run tests
-./gradlew :backend:notification-service:test
-```
+**User Service calls:**
+- Profile update confirmations
 
-## Local Development
+## Architecture
 
-1. Create a Gmail account for testing
-2. Enable 2-factor authentication
-3. Generate an App Password at https://myaccount.google.com/apppasswords
-4. Add to `.env`:
-   ```
-   GMAIL_USERNAME=your-test-email@gmail.com
-   GMAIL_APP_PASSWORD=xxxx-xxxx-xxxx-xxxx
-   ```
+### Components (Planned)
 
-## Testing Emails
+**NotificationController**
+- REST endpoints for sending notifications
+- Request validation
+- Queue integration
 
-For development, you can use:
-- MailHog (local SMTP capture)
-- Gmail with app passwords
-- AWS SES in sandbox mode
+**NotificationService**
+- Template rendering (Thymeleaf)
+- Email provider abstraction
+- Queue management
 
-## Future Architecture
+**EmailSender**
+- SMTP integration
+- Retry logic
+- Error handling
 
-```
-┌─────────────────┐     ┌──────────────┐     ┌─────────────┐
-│  Other Services │────▶│  REST API    │────▶│  Queue      │
-└─────────────────┘     └──────────────┘     └─────────────┘
-                                                    │
-                         ┌─────────────────────────┘
-                         ▼
-                    ┌──────────────┐
-                    │  Worker      │
-                    └──────────────┘
-                         │
-                         ▼
-                    ┌──────────────┐
-                    │  SMTP/SendGrid│
-                    └──────────────┘
-```
+**Templates**
+- Thymeleaf HTML templates
+- Shared layout components
+- Localization support
+
+## Dependencies (Planned)
+
+- Spring Boot Web
+- Spring Mail (SMTP)
+- Thymeleaf (templating)
+- Queue system (TBD: RabbitMQ or Kafka)
+
+## Configuration
+
+Environment variables:
+- `GMAIL_USERNAME` — SMTP username
+- `GMAIL_APP_PASSWORD` — SMTP password
+- `NOTIFICATION_QUEUE_TYPE` — Queue provider (future)
+
+## Development Status
+
+### Completed
+- Service structure
+- Basic controller skeleton
+
+### In Progress
+- Email template design
+- SMTP integration
+- Queue implementation
+
+### Planned
+- SMS notifications
+- Push notifications
+- Notification preferences
+- Multi-language support
+
+## Links
+
+- Service source: `backend/notification-service/`
+- Email templates: `backend/notification-service/src/main/resources/templates/`
