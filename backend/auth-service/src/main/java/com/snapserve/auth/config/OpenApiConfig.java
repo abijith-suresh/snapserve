@@ -7,12 +7,14 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class OpenApiConfig {
-    @Bean
-    public OpenAPI openAPI() {
-        return new OpenAPI()
-                .info(new Info()
-                        .title("SnapServe - Auth Service API")
-                        .version("v1")
-                        .description("Authentication and token management with refresh tokens, account lockout, and security logging"));
-    }
+  @Bean
+  public OpenAPI openAPI() {
+    return new OpenAPI()
+        .info(
+            new Info()
+                .title("SnapServe - Auth Service API")
+                .version("v1")
+                .description(
+                    "Authentication and token management with refresh tokens, account lockout, and security logging"));
+  }
 }

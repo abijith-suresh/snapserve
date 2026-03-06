@@ -18,36 +18,36 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 public class AccountController {
-    private final AccountService accountService;
+  private final AccountService accountService;
 
-    @PostMapping("/register")
-    public ResponseEntity<ApiResponse<Void>> register(@Valid @RequestBody RegisterRequest request) {
-        accountService.register(request);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.ok("User registered successfully"));
-    }
+  @PostMapping("/register")
+  public ResponseEntity<ApiResponse<Void>> register(@Valid @RequestBody RegisterRequest request) {
+    accountService.register(request);
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(ApiResponse.ok("User registered successfully"));
+  }
 
-    @PostMapping("/login")
-    public ResponseEntity<ApiResponse<AuthResponse>> login(
-            @Valid @RequestBody LoginRequest request,
-            @RequestHeader(value = "X-Device-Id", defaultValue = "unknown") String deviceId,
-            @RequestHeader(value = "X-Real-IP", defaultValue = "unknown") String ipAddress) {
-        AuthResponse response = accountService.login(request, deviceId, ipAddress);
-        return ResponseEntity.ok(ApiResponse.ok(response));
-    }
+  @PostMapping("/login")
+  public ResponseEntity<ApiResponse<AuthResponse>> login(
+      @Valid @RequestBody LoginRequest request,
+      @RequestHeader(value = "X-Device-Id", defaultValue = "unknown") String deviceId,
+      @RequestHeader(value = "X-Real-IP", defaultValue = "unknown") String ipAddress) {
+    AuthResponse response = accountService.login(request, deviceId, ipAddress);
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
 
-    @PostMapping("/refresh")
-    public ResponseEntity<ApiResponse<AuthResponse>> refreshAccessToken(
-            @Valid @RequestBody RefreshTokenRequest request,
-            @RequestHeader(value = "X-Device-Id", defaultValue = "unknown") String deviceId,
-            @RequestHeader(value = "X-Real-IP", defaultValue = "unknown") String ipAddress) {
-        AuthResponse response = accountService.refreshAccessToken(request, deviceId, ipAddress);
-        return ResponseEntity.ok(ApiResponse.ok(response));
-    }
+  @PostMapping("/refresh")
+  public ResponseEntity<ApiResponse<AuthResponse>> refreshAccessToken(
+      @Valid @RequestBody RefreshTokenRequest request,
+      @RequestHeader(value = "X-Device-Id", defaultValue = "unknown") String deviceId,
+      @RequestHeader(value = "X-Real-IP", defaultValue = "unknown") String ipAddress) {
+    AuthResponse response = accountService.refreshAccessToken(request, deviceId, ipAddress);
+    return ResponseEntity.ok(ApiResponse.ok(response));
+  }
 
-    @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<Void>> logout(@RequestBody RefreshTokenRequest request) {
-        accountService.logout(request.getRefreshToken());
-        return ResponseEntity.ok(ApiResponse.ok("Logged out successfully"));
-    }
+  @PostMapping("/logout")
+  public ResponseEntity<ApiResponse<Void>> logout(@RequestBody RefreshTokenRequest request) {
+    accountService.logout(request.getRefreshToken());
+    return ResponseEntity.ok(ApiResponse.ok("Logged out successfully"));
+  }
 }

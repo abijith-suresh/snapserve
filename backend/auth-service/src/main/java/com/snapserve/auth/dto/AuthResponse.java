@@ -9,8 +9,8 @@ import lombok.Data;
 @Builder
 @AllArgsConstructor
 public class AuthResponse {
-    private String accessToken;
-    private String refreshToken;
-    private Role role;
-    private long expiresIn;
+  private String accessToken;
+  private String refreshToken;
+  private Role role;
+  private long expiresIn;
 }
