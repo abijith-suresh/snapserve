@@ -3,24 +3,22 @@ package com.snapserve.user.service;
 import com.snapserve.common.exception.ConflictException;
 import com.snapserve.common.exception.ResourceNotFoundException;
 import com.snapserve.common.model.Role;
-import com.snapserve.user.dto.customer.CustomerRequest;
-import com.snapserve.user.dto.customer.CustomerResponse;
-import com.snapserve.user.dto.specialist.SpecialistRequest;
-import com.snapserve.user.dto.specialist.SpecialistResponse;
 import com.snapserve.user.mapper.UserMapper;
 import com.snapserve.user.model.UserEntity;
 import com.snapserve.user.repo.UserRepository;
+import com.snapserve.userclient.dto.customer.CustomerRequest;
+import com.snapserve.userclient.dto.customer.CustomerResponse;
+import com.snapserve.userclient.dto.specialist.SpecialistRequest;
+import com.snapserve.userclient.dto.specialist.SpecialistResponse;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional
 public class UserService {
 
   private final UserRepository userRepository;
@@ -48,6 +46,7 @@ public class UserService {
     UserEntity user = userMapper.toSpecialistEntity(request);
     user.setRole(Role.SPECIALIST);
     user.setVerified(false);
+    user.setHourlyRate(request.hourlyRate());
     user = userRepository.save(user);
 
     log.info("Specialist created with email: {}", request.email());
@@ -131,6 +130,7 @@ public class UserService {
     specialist.setPhone(request.phone());
     specialist.setTitle(request.title());
     specialist.setServices(request.services());
+    specialist.setHourlyRate(request.hourlyRate());
 
     specialist = userRepository.save(specialist);
     log.info("Specialist updated: {}", specialist.getEmail());

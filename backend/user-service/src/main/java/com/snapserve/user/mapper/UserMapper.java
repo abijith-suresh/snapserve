@@ -1,10 +1,10 @@
 package com.snapserve.user.mapper;
 
-import com.snapserve.user.dto.customer.CustomerRequest;
-import com.snapserve.user.dto.customer.CustomerResponse;
-import com.snapserve.user.dto.specialist.SpecialistRequest;
-import com.snapserve.user.dto.specialist.SpecialistResponse;
 import com.snapserve.user.model.UserEntity;
+import com.snapserve.userclient.dto.customer.CustomerRequest;
+import com.snapserve.userclient.dto.customer.CustomerResponse;
+import com.snapserve.userclient.dto.specialist.SpecialistRequest;
+import com.snapserve.userclient.dto.specialist.SpecialistResponse;
 import java.util.List;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;

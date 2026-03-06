@@ -1,9 +1,9 @@
 package com.snapserve.user.controller;
 
 import com.snapserve.common.response.ApiResponse;
-import com.snapserve.user.dto.specialist.SpecialistRequest;
-import com.snapserve.user.dto.specialist.SpecialistResponse;
 import com.snapserve.user.service.UserService;
+import com.snapserve.userclient.dto.specialist.SpecialistRequest;
+import com.snapserve.userclient.dto.specialist.SpecialistResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
