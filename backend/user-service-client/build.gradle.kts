@@ -14,6 +14,7 @@ dependencyManagement {
 dependencies {
     compileOnly(libs.spring.cloud.openfeign)
     compileOnly(libs.spring.boot.starter.web)
+    compileOnly(libs.spring.boot.starter.validation)
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
     testImplementation(libs.spring.boot.starter.test)
