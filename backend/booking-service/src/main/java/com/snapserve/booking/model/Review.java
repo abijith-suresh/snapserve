@@ -2,7 +2,6 @@ package com.snapserve.booking.model;
 
 import com.snapserve.common.model.Auditable;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -17,7 +16,6 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 @Document(collection = "reviews")
 @CompoundIndex(name = "booking_idx", def = "{'bookingId': 1}", unique = true)
 @CompoundIndex(name = "specialist_rating_idx", def = "{'specialistId': 1, 'rating': 1}")

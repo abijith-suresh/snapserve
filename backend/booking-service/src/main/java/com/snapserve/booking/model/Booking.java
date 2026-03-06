@@ -4,7 +4,6 @@ import com.snapserve.common.model.Auditable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -19,7 +18,6 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 @Document(collection = "bookings")
 @CompoundIndex(name = "customer_status_idx", def = "{'customerId': 1, 'status': 1}")
 @CompoundIndex(name = "specialist_status_idx", def = "{'specialistId': 1, 'status': 1}")
