@@ -12,9 +12,10 @@ dependencyManagement {
 }
 
 dependencies {
-    compileOnly(libs.spring.boot.starter.web)
-    compileOnly(libs.spring.boot.starter.validation)
-    compileOnly(libs.jjwt.api)
+    api(libs.spring.boot.starter.web)
+    api(libs.spring.boot.starter.validation)
+    api(libs.spring.boot.starter.data.mongodb)
+    api(libs.jjwt.api)
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
     testImplementation(libs.spring.boot.starter.test)

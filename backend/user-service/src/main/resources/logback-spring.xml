@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+  <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+  <springProperty scope="context" name="springAppName" source="spring.application.name"/>
+
+  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+      <fieldNames>
+        <timestamp>timestamp</timestamp>
+        <message>message</message>
+        <level>level</level>
+        <logger>logger</logger>
+        <thread>thread</thread>
+        <mdc>mdc</mdc>
+      </fieldNames>
+      <includeContext>true</includeContext>
+      <includeMdc>true</includeMdc>
+      <includeCallerData>true</includeCallerData>
+      <customFields>{"app":"${springAppName}"}</customFields>
+    </encoder>
+  </appender>
+
+  <root level="INFO">
+    <appender-ref ref="CONSOLE"/>
+  </root>
+</configuration>

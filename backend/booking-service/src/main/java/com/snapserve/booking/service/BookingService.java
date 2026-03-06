@@ -5,8 +5,8 @@ import com.snapserve.booking.dto.BookingResponseDto;
 import com.snapserve.booking.model.Booking;
 import com.snapserve.booking.repo.BookingRepository;
 import com.snapserve.userclient.client.UserServiceClient;
-import com.snapserve.userclient.dto.CustomerDto;
-import com.snapserve.userclient.dto.SpecialistDto;
+import com.snapserve.userclient.dto.customer.CustomerResponse;
+import com.snapserve.userclient.dto.specialist.SpecialistResponse;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -32,8 +32,8 @@ public class BookingService {
   }
 
   private BookingResponseDto toResponseDto(Booking booking) {
-    CustomerDto customer = fetchCustomer(booking.getCustomerId().toString());
-    SpecialistDto specialist = fetchSpecialist(booking.getSpecialistId().toString());
+    CustomerResponse customer = fetchCustomer(booking.getCustomerId().toString());
+    SpecialistResponse specialist = fetchSpecialist(booking.getSpecialistId().toString());
     return new BookingResponseDto(
         booking.getId().toString(),
         customer,
@@ -67,7 +67,7 @@ public class BookingService {
     bookingRepo.deleteById(id);
   }
 
-  CustomerDto fetchCustomer(String id) {
+  CustomerResponse fetchCustomer(String id) {
     try {
       return userServiceClient.getCustomerById(id);
     } catch (Exception e) {
@@ -75,7 +75,7 @@ public class BookingService {
     }
   }
 
-  SpecialistDto fetchSpecialist(String id) {
+  SpecialistResponse fetchSpecialist(String id) {
     try {
       return userServiceClient.getSpecialistById(id);
     } catch (Exception e) {
