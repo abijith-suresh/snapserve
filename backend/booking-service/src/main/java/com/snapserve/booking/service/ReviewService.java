@@ -4,7 +4,7 @@ import com.snapserve.booking.dto.ReviewDto;
 import com.snapserve.booking.dto.SpecialistReviewResponseDto;
 import com.snapserve.booking.model.Review;
 import com.snapserve.booking.repo.ReviewRepository;
-import com.snapserve.userclient.dto.CustomerDto;
+import com.snapserve.userclient.dto.customer.CustomerResponse;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.bson.types.ObjectId;
@@ -65,7 +65,7 @@ public class ReviewService {
     return reviewRepo.findBySpecialistId(specialistId).stream()
         .map(
             review -> {
-              CustomerDto customer =
+              CustomerResponse customer =
                   bookingService.fetchCustomer(review.getCustomerId().toString());
               String authorName = customer != null ? customer.name() : "Unknown";
               return new SpecialistReviewResponseDto(
