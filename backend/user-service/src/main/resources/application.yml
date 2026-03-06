@@ -4,9 +4,21 @@ spring:
   data:
     mongodb:
       uri: ${MONGODB_URI}
+      auto-index-creation: true
 
 server:
   port: 9001
+
+logging:
+  level:
+    com.snapserve.user: INFO
+  include-application-name: true
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
 
 management:
   endpoints:
