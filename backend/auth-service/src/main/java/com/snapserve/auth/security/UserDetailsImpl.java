@@ -1,9 +1,9 @@
 package com.snapserve.auth.security;
 
 import com.snapserve.auth.model.Account;
-import java.util.Arrays;
+import com.snapserve.common.model.Role;
 import java.util.Collection;
-import java.util.stream.Collectors;
+import java.util.Collections;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -16,11 +16,7 @@ public class UserDetailsImpl implements UserDetails {
   public UserDetailsImpl(Account account) {
     this.username = account.getEmail();
     this.password = account.getPassword();
-    this.authorities =
-        Arrays.stream(account.getRoles().split(","))
-            .map(String::trim)
-            .map(SimpleGrantedAuthority::new)
-            .collect(Collectors.toList());
+    this.authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + account.getRole().name()));
   }
 
   @Override
