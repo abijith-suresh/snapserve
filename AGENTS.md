@@ -1,64 +1,129 @@
 # SnapServe — Agent Context
 
-SnapServe is a service-booking platform where customers book appointments with specialists
-(plumbers, electricians, etc). Admins manage specialist approvals and complaints.
+Service booking platform where customers book appointments with specialists (plumbers, electricians, etc). Admins manage specialist approvals and complaints.
 
-## Architecture
+## Architecture Overview
 
-5 Spring Boot microservices + 1 React frontend:
+**5 Spring Boot microservices + React frontend:**
 
 | Service | Port | Responsibility |
 |---------|------|----------------|
 | api-gateway | 9090 | Routing, JWT validation, CORS, rate limiting |
-| auth-service | 9000 | Register, login, token management |
-| user-service | 9001 | Customer, Specialist, Admin profiles |
+| auth-service | 9000 | JWT authentication, token refresh, account lockout |
+| user-service | 9001 | Customer, Specialist, Admin profile management |
 | booking-service | 9002 | Bookings, reviews, complaints |
-| notification-service | 9003 | Email notifications |
+| notification-service | 9003 | Email notifications (rebuilding) |
 
-Frontend runs on port 3000. All frontend API calls go through api-gateway at port 9090.
+Frontend runs on port 3000. All API calls go through api-gateway at port 9090.
 
 ## Tech Stack
 
-- **Backend**: Java 21, Spring Boot 4.0.3, Spring Cloud 2025.1.1 (Oakwood), MongoDB Atlas, Gradle 8 (Kotlin DSL)
-- **Frontend**: React 18 + TypeScript, Bun, Vite, shadcn/ui, Tailwind CSS, Axios, React Query, Zustand
+- **Backend**: Java 21, Spring Boot 4.0.3, Spring Cloud 2025.1.1 (Oakwood), MongoDB, Gradle 8 (Kotlin DSL)
+- **Frontend**: React 19 + TypeScript (strict), Bun, Vite, shadcn/ui, Tailwind CSS v4, React Query v5, Zustand v5
 - **Infra**: Docker Compose, GitHub Actions CI/CD
 
-## Key Rules for Agents
+## Quick Commands
 
-1. **Read the issue description carefully** — each issue is atomic and self-contained.
-2. **No WebFlux**: All services use standard `spring-boot-starter-web` (blocking). Never use WebFlux or reactive types (`Mono`, `Flux`).
-3. **No hardcoded secrets**: All secrets come from environment variables. See `.env.example` for the full list.
-4. **YAML config only**: Services use `application.yml` and `application-prod.yml`. No `.properties` files.
-5. **Service URLs**: Services reach each other via Docker Compose DNS (e.g. `http://auth-service:9000`). URLs injected via `@Value` from env vars.
-6. **CORS lives at the gateway only**: Never add `@CrossOrigin` to any controller.
-7. **TypeScript strict**: Frontend is TypeScript strict mode. `bun run tsc --noEmit` must pass with zero errors.
-8. **Conventional commits**: All commits must follow Conventional Commits format (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`, `ci:`). commitlint enforces this.
-9. **Monorepo**: Backend is a Gradle multi-project build. Run `./gradlew :backend:<service-name>:build` for a specific service, or `./gradlew build` for all.
-10. **No Eureka, no Config Server**: Removed. Docker Compose DNS handles service discovery. Per-service YAML handles config.
+```bash
+# Start everything
+docker compose up --build
+
+# Build specific service
+./gradlew :backend:<service-name>:build
+
+# Build all services
+./gradlew build
+
+# Frontend dev
+bun run dev
+
+# Frontend checks
+bun run lint
+bun run typecheck
+```
+
+## Critical Rules
+
+1. **Read issue description carefully** — each issue is atomic
+2. **Backend patterns**:
+   - Java Records for DTOs (not Lombok @Data)
+   - MapStruct for DTO mapping
+   - Constructor injection with @RequiredArgsConstructor (never @Autowired field injection)
+   - ApiResponse<T> wrapper for all responses
+   - @Transactional on service methods
+3. **No WebFlux**: Blocking Spring MVC only (no Mono/Flux)
+4. **No hardcoded secrets**: All from environment variables (.env)
+5. **YAML config only**: application.yml and application-prod.yml (no .properties)
+6. **CORS lives at gateway only**: Never @CrossOrigin on controllers
+7. **TypeScript strict**: `bun run tsc --noEmit` must pass with zero errors
+8. **Conventional commits**: `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`, `ci:`
+9. **Service URLs via Docker Compose DNS**: `http://<service-name>:<port>`
+
+## Frontend Patterns
+
+- **Server state**: React Query (TanStack Query) — configured but not yet implemented
+- **Client state**: Zustand with persistence
+- **Forms**: React Hook Form + Zod validation
+- **Routing**: React Router 7 (data API pattern)
+- **API calls**: Axios through gateway (port 9090)
+
+## Service Architecture
+
+```
+Controller (@RestController, @RequestMapping)
+  ↓
+Service (@Service, @RequiredArgsConstructor, @Transactional)
+  ↓
+Repository (Spring Data MongoDB)
+  ↓
+MongoDB
+```
+
+All services use:
+- `common` module: Auditable base class, exceptions, ApiResponse wrapper, JWT utilities
+- MapStruct mappers for DTO conversion
+- Java Records for DTOs with Bean Validation
+- Constructor injection (never field injection)
 
 ## Directory Structure
 
 ```
-snapserve/
-├── backend/
-│   ├── api-gateway/           Spring Cloud Gateway
-│   ├── auth-service/          JWT auth
-│   ├── user-service/          Customer, Specialist, Admin profiles
-│   ├── booking-service/       Bookings, reviews, complaints
-│   └── notification-service/  Email only
-├── frontend/                  React + TypeScript + Bun
-├── docker-compose.yml
-├── docker-compose.prod.yml
-├── .env.example               All required env variable names (values blank)
-├── .github/workflows/         CI pipelines
-└── .husky/                    Pre-commit hooks
+backend/
+├── api-gateway/           Spring Cloud Gateway (routing, auth)
+├── auth-service/          JWT token management
+├── user-service/          Profile management (reference implementation)
+├── booking-service/       Bookings/reviews (refactoring in progress)
+├── notification-service/  Email service (rebuilding)
+├── common/                Shared code (auto-configured)
+└── user-service-client/   Feign client for user-service
+
+frontend/
+├── components/ui/         shadcn/ui components
+├── features/              Feature modules (auth, customer, specialist)
+├── pages/                 Public pages
+├── routes/                Route layouts
+└── shared/                API client, types
+
+docs/                      Comprehensive documentation
 ```
 
-## Running Locally
+## Documentation
 
-```bash
-cp .env.example .env   # fill in your values
-docker compose up --build
-# Frontend: http://localhost:3000
-# API:      http://localhost:9090
-```
+- **Full docs**: [docs/](./docs/index.md)
+- **Architecture**: [docs/architecture/](./docs/architecture/)
+- **Standards**: [docs/standards/](./docs/standards/)
+- **Backend**: [docs/backend/](./docs/backend/)
+- **Frontend**: [docs/frontend/](./docs/frontend/)
+- **Deployment**: [docs/deployment/](./docs/deployment/)
+
+## Environment
+
+Copy `.env.example` to `.env` and fill in values.
+
+## Links
+
+- [Architecture Overview](./docs/architecture/overview.md)
+- [Backend Standards](./docs/standards/code-style.md)
+- [API Design Guidelines](./docs/standards/api-design.md)
+- [Security Guidelines](./docs/standards/security.md)
+- [Frontend Architecture](./docs/frontend/architecture.md)
