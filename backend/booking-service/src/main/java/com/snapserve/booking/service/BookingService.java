@@ -1,85 +1,271 @@
 package com.snapserve.booking.service;
 
-import com.snapserve.booking.dto.AddBookingDto;
-import com.snapserve.booking.dto.BookingResponseDto;
+import com.snapserve.booking.dto.request.BookingRequest;
+import com.snapserve.booking.dto.request.UpdateBookingRequest;
+import com.snapserve.booking.dto.response.BookingListResponse;
+import com.snapserve.booking.dto.response.BookingResponse;
 import com.snapserve.booking.model.Booking;
-import com.snapserve.booking.repo.BookingRepository;
+import com.snapserve.booking.repository.BookingRepository;
+import com.snapserve.booking.service.mapper.BookingMapper;
+import com.snapserve.common.exception.ConflictException;
+import com.snapserve.common.exception.ResourceNotFoundException;
+import com.snapserve.common.exception.ServiceUnavailableException;
 import com.snapserve.userclient.client.UserServiceClient;
-import com.snapserve.userclient.dto.customer.CustomerResponse;
-import com.snapserve.userclient.dto.specialist.SpecialistResponse;
+import feign.FeignException;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class BookingService {
 
-  @Autowired private BookingRepository bookingRepo;
+  private final BookingRepository bookingRepository;
+  private final BookingMapper bookingMapper;
+  private final UserServiceClient userServiceClient;
 
-  @Autowired private UserServiceClient userServiceClient;
+  @Transactional(readOnly = true)
+  public BookingResponse getBookingById(String id) {
+    log.info("Fetching booking with id: {}", id);
 
-  private Booking dtoToModel(AddBookingDto bookingDto) {
-    Booking booking = new Booking();
-    booking.setCustomerId(new ObjectId(bookingDto.getCustomerId()));
-    booking.setSpecialistId(new ObjectId(bookingDto.getSpecialistId()));
-    booking.setAppointmentTime(bookingDto.getAppointmentTime());
-    booking.setService(bookingDto.getService());
-    booking.setStatus(bookingDto.getStatus());
-    return booking;
+    Booking booking =
+        bookingRepository
+            .findById(new ObjectId(id))
+            .orElseThrow(() -> ResourceNotFoundException.of("Booking", id));
+
+    log.debug("Found booking: {}", booking);
+    return bookingMapper.toResponse(booking);
   }
 
-  private BookingResponseDto toResponseDto(Booking booking) {
-    CustomerResponse customer = fetchCustomer(booking.getCustomerId().toString());
-    SpecialistResponse specialist = fetchSpecialist(booking.getSpecialistId().toString());
-    return new BookingResponseDto(
-        booking.getId().toString(),
-        customer,
-        specialist,
-        booking.getAppointmentTime(),
-        booking.getService(),
-        booking.getStatus());
+  @Transactional(readOnly = true)
+  public BookingListResponse getBookingsByCustomer(String customerId, Pageable pageable) {
+    log.info("Fetching bookings for customer: {} with pagination: {}", customerId, pageable);
+
+    validateCustomerExists(customerId);
+
+    Page<Booking> bookingPage = bookingRepository.findByCustomerId(customerId, pageable);
+
+    log.debug("Found {} bookings for customer {}", bookingPage.getTotalElements(), customerId);
+    return toBookingListResponse(bookingPage);
   }
 
-  public String createBooking(AddBookingDto bookingDto) {
-    Booking newBooking = dtoToModel(bookingDto);
-    bookingRepo.save(newBooking);
-    return "Booking created successfully.";
+  @Transactional(readOnly = true)
+  public BookingListResponse getBookingsBySpecialist(String specialistId, Pageable pageable) {
+    log.info("Fetching bookings for specialist: {} with pagination: {}", specialistId, pageable);
+
+    validateSpecialistExists(specialistId);
+
+    Page<Booking> bookingPage = bookingRepository.findBySpecialistId(specialistId, pageable);
+
+    log.debug("Found {} bookings for specialist {}", bookingPage.getTotalElements(), specialistId);
+    return toBookingListResponse(bookingPage);
   }
 
-  public List<BookingResponseDto> getAllBookings() {
-    return bookingRepo.findAll().stream().map(this::toResponseDto).collect(Collectors.toList());
+  @Transactional(readOnly = true)
+  public BookingListResponse getBookingsByCustomerAndStatus(
+      String customerId, String status, Pageable pageable) {
+    log.info(
+        "Fetching bookings for customer: {} with status: {} and pagination: {}",
+        customerId,
+        status,
+        pageable);
+
+    validateCustomerExists(customerId);
+
+    Page<Booking> bookingPage =
+        bookingRepository.findByCustomerIdAndStatus(customerId, status, pageable);
+
+    log.debug(
+        "Found {} bookings for customer {} with status {}",
+        bookingPage.getTotalElements(),
+        customerId,
+        status);
+    return toBookingListResponse(bookingPage);
   }
 
-  public BookingResponseDto getBookingById(ObjectId id) {
-    Optional<Booking> booking = bookingRepo.findById(id);
-    return booking.map(this::toResponseDto).orElse(null);
+  @Transactional(readOnly = true)
+  public BookingListResponse getBookingsBySpecialistAndStatus(
+      String specialistId, String status, Pageable pageable) {
+    log.info(
+        "Fetching bookings for specialist: {} with status: {} and pagination: {}",
+        specialistId,
+        status,
+        pageable);
+
+    validateSpecialistExists(specialistId);
+
+    Page<Booking> bookingPage =
+        bookingRepository.findBySpecialistIdAndStatus(specialistId, status, pageable);
+
+    log.debug(
+        "Found {} bookings for specialist {} with status {}",
+        bookingPage.getTotalElements(),
+        specialistId,
+        status);
+    return toBookingListResponse(bookingPage);
   }
 
-  public Booking updateBooking(ObjectId id, Booking bookingDetails) {
-    bookingDetails.setId(id);
-    return bookingRepo.save(bookingDetails);
+  @Transactional(readOnly = true)
+  public BookingListResponse getAllBookings(Pageable pageable) {
+    log.info("Fetching all bookings with pagination: {}", pageable);
+
+    Page<Booking> bookingPage = bookingRepository.findAll(pageable);
+
+    log.debug("Found {} total bookings", bookingPage.getTotalElements());
+    return toBookingListResponse(bookingPage);
   }
 
-  public void deleteBooking(ObjectId id) {
-    bookingRepo.deleteById(id);
+  @Transactional
+  public BookingResponse createBooking(BookingRequest request) {
+    log.info(
+        "Creating booking for customer: {} with specialist: {}",
+        request.customerId(),
+        request.specialistId());
+
+    validateCustomerExists(request.customerId());
+    validateSpecialistExists(request.specialistId());
+    checkForBookingConflicts(request.specialistId(), request.bookingDate());
+
+    Booking booking = bookingMapper.toEntity(request);
+    booking.setStatus("PENDING");
+
+    Booking savedBooking = bookingRepository.save(booking);
+
+    log.info("Booking created successfully with id: {}", savedBooking.getId());
+
+    // TODO: Publish async event for notification-service to send confirmation email
+    // eventPublisher.publishEvent(new BookingCreatedEvent(savedBooking));
+
+    return bookingMapper.toResponse(savedBooking);
   }
 
-  CustomerResponse fetchCustomer(String id) {
+  @Transactional
+  public BookingResponse updateBooking(String id, UpdateBookingRequest request) {
+    log.info("Updating booking with id: {}", id);
+
+    Booking booking =
+        bookingRepository
+            .findById(new ObjectId(id))
+            .orElseThrow(() -> ResourceNotFoundException.of("Booking", id));
+
+    if (request.bookingDate() != null) {
+      checkForBookingConflicts(booking.getSpecialistId(), request.bookingDate(), id);
+    }
+
+    bookingMapper.updateEntityFromRequest(request, booking);
+
+    Booking updatedBooking = bookingRepository.save(booking);
+
+    log.info("Booking updated successfully with id: {}", id);
+
+    // TODO: Publish async event for notification-service to send update email
+    // eventPublisher.publishEvent(new BookingUpdatedEvent(updatedBooking));
+
+    return bookingMapper.toResponse(updatedBooking);
+  }
+
+  @Transactional
+  public void deleteBooking(String id) {
+    log.info("Deleting booking with id: {}", id);
+
+    ObjectId objectId = new ObjectId(id);
+    Booking booking =
+        bookingRepository
+            .findById(objectId)
+            .orElseThrow(() -> ResourceNotFoundException.of("Booking", id));
+
+    bookingRepository.delete(booking);
+
+    log.info("Booking deleted successfully with id: {}", id);
+
+    // TODO: Publish async event for notification-service to send cancellation email
+    // eventPublisher.publishEvent(new BookingCancelledEvent(booking));
+  }
+
+  @Transactional(readOnly = true)
+  public void validateCustomerExists(String customerId) {
+    log.debug("Validating customer exists: {}", customerId);
+
     try {
-      return userServiceClient.getCustomerById(id);
-    } catch (Exception e) {
-      return null;
+      userServiceClient.getCustomerById(customerId);
+      log.debug("Customer {} validated successfully", customerId);
+    } catch (FeignException.NotFound e) {
+      log.warn("Customer not found: {}", customerId);
+      throw ResourceNotFoundException.of("Customer", customerId);
+    } catch (FeignException e) {
+      log.error("Error validating customer {}: {}", customerId, e.getMessage());
+      throw new ServiceUnavailableException("Unable to validate customer. Please try again later.");
     }
   }
 
-  SpecialistResponse fetchSpecialist(String id) {
+  @Transactional(readOnly = true)
+  public void validateSpecialistExists(String specialistId) {
+    log.debug("Validating specialist exists: {}", specialistId);
+
     try {
-      return userServiceClient.getSpecialistById(id);
-    } catch (Exception e) {
-      return null;
+      userServiceClient.getSpecialistById(specialistId);
+      log.debug("Specialist {} validated successfully", specialistId);
+    } catch (FeignException.NotFound e) {
+      log.warn("Specialist not found: {}", specialistId);
+      throw ResourceNotFoundException.of("Specialist", specialistId);
+    } catch (FeignException e) {
+      log.error("Error validating specialist {}: {}", specialistId, e.getMessage());
+      throw new ServiceUnavailableException(
+          "Unable to validate specialist. Please try again later.");
     }
+  }
+
+  private void checkForBookingConflicts(String specialistId, LocalDateTime bookingDate) {
+    checkForBookingConflicts(specialistId, bookingDate, null);
+  }
+
+  private void checkForBookingConflicts(
+      String specialistId, LocalDateTime bookingDate, String excludeBookingId) {
+    log.debug(
+        "Checking for booking conflicts for specialist: {} at time: {}", specialistId, bookingDate);
+
+    LocalDateTime conflictWindowStart = bookingDate.minus(1, ChronoUnit.HOURS);
+    LocalDateTime conflictWindowEnd = bookingDate.plus(1, ChronoUnit.HOURS);
+
+    List<Booking> conflictingBookings =
+        bookingRepository.findConflictingBookings(
+            specialistId, conflictWindowStart, conflictWindowEnd);
+
+    if (excludeBookingId != null) {
+      conflictingBookings =
+          conflictingBookings.stream()
+              .filter(b -> !b.getId().toString().equals(excludeBookingId))
+              .toList();
+    }
+
+    if (!conflictingBookings.isEmpty()) {
+      log.warn(
+          "Booking conflict detected for specialist: {} at time: {}", specialistId, bookingDate);
+      throw new ConflictException(
+          "The specialist is already booked during the requested time slot. "
+              + "Please choose a different time.");
+    }
+
+    log.debug(
+        "No booking conflicts found for specialist: {} at time: {}", specialistId, bookingDate);
+  }
+
+  private BookingListResponse toBookingListResponse(Page<Booking> page) {
+    return new BookingListResponse(
+        bookingMapper.toResponseList(page.getContent()),
+        page.getNumber(),
+        page.getSize(),
+        page.getTotalElements(),
+        page.getTotalPages(),
+        page.isFirst(),
+        page.isLast());
   }
 }
