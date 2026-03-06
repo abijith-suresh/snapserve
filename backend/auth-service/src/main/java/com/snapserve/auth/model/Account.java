@@ -1,22 +1,36 @@
 package com.snapserve.auth.model;
 
-import lombok.AllArgsConstructor;
+import com.snapserve.common.model.Auditable;
+import com.snapserve.common.model.Role;
+import java.time.Instant;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @Data
+@EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
-@AllArgsConstructor
 @Document(collection = "account")
-public class Account {
+public class Account extends Auditable {
 
   @Id private ObjectId id;
 
+  @Indexed(unique = true)
   private String email;
+
   private String password;
 
-  private String roles;
+  private Role role;
+
+  private boolean enabled = true;
+
+  private boolean locked = false;
+
+  private int failedLoginAttempts = 0;
+
+  private Instant lastFailedLoginAt;
 }
