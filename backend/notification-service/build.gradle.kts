@@ -12,9 +12,12 @@ dependencyManagement {
 
 dependencies {
     implementation(project(":backend:common"))
+    implementation(project(":backend:notification-service-client"))
     implementation(libs.spring.boot.starter.web)
+    implementation(libs.spring.boot.starter.data.mongodb)
     implementation(libs.spring.boot.starter.mail)
     implementation(libs.spring.boot.starter.thymeleaf)
+    implementation(libs.spring.boot.starter.validation)
     implementation(libs.spring.boot.starter.actuator)
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
