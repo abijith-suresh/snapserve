@@ -8,5 +8,6 @@ include(
     ":backend:booking-service",
     ":backend:booking-service-client",
     ":backend:notification-service",
+    ":backend:notification-service-client",
     ":backend:common"
 )
