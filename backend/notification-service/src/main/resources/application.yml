@@ -1,6 +1,9 @@
 spring:
   application:
     name: notification-service
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/snapserve-notifications}
   mail:
     host: smtp.gmail.com
     port: 587
@@ -18,3 +21,12 @@ management:
     web:
       exposure:
         include: health,info
+
+notification:
+  service:
+    url: http://notification-service:9003
+  retry:
+    max-attempts: 5
+    backoff-multiplier: 2
+    initial-delay-seconds: 1
+    max-delay-seconds: 60
