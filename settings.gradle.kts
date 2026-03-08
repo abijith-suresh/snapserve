@@ -6,6 +6,7 @@ include(
     ":backend:user-service",
     ":backend:user-service-client",
     ":backend:booking-service",
+    ":backend:booking-service-client",
     ":backend:notification-service",
     ":backend:common"
 )

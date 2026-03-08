@@ -4,6 +4,8 @@ spring-cloud = "2025.1.1"
 jjwt         = "0.13.0"
 lombok       = "1.18.42"
 spotless     = "8.3.0"
+mapstruct    = "1.5.5.Final"
+springdoc    = "2.3.0"
 
 [libraries]
 spring-boot-starter-web          = { module = "org.springframework.boot:spring-boot-starter-web" }
@@ -20,6 +22,10 @@ jjwt-api                         = { module = "io.jsonwebtoken:jjwt-api",     ve
 jjwt-impl                        = { module = "io.jsonwebtoken:jjwt-impl",    version.ref = "jjwt" }
 jjwt-jackson                     = { module = "io.jsonwebtoken:jjwt-jackson", version.ref = "jjwt" }
 lombok                           = { module = "org.projectlombok:lombok",     version.ref = "lombok" }
+mapstruct                        = { module = "org.mapstruct:mapstruct",      version.ref = "mapstruct" }
+mapstruct-processor              = { module = "org.mapstruct:mapstruct-processor", version.ref = "mapstruct" }
+lombok-mapstruct-binding         = { module = "org.projectlombok:lombok-mapstruct-binding", version = "0.2.0" }
+springdoc-openapi                = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc" }
 
 [plugins]
 spring-boot     = { id = "org.springframework.boot",        version.ref = "spring-boot" }
