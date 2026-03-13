@@ -20,7 +20,7 @@ dependencies {
     implementation(libs.jjwt.api)
     runtimeOnly(libs.jjwt.impl)
     runtimeOnly(libs.jjwt.jackson)
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2")
     implementation("net.logstash.logback:logstash-logback-encoder:7.4")
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)
