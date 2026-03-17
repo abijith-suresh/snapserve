@@ -5,7 +5,7 @@ jjwt         = "0.13.0"
 lombok       = "1.18.42"
 spotless     = "8.3.0"
 mapstruct    = "1.5.5.Final"
-springdoc    = "2.3.0"
+springdoc    = "3.0.2"
 
 [libraries]
 spring-boot-starter-web          = { module = "org.springframework.boot:spring-boot-starter-web" }
