@@ -2,15 +2,23 @@ package com.snapserve.user.controller;
 
 import com.snapserve.common.response.ApiResponse;
 import com.snapserve.user.service.UserService;
+import com.snapserve.userclient.dto.customer.CustomerListResponse;
 import com.snapserve.userclient.dto.customer.CustomerRequest;
 import com.snapserve.userclient.dto.customer.CustomerResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -29,6 +37,25 @@ public class CustomerController {
   public ResponseEntity<ApiResponse<List<CustomerResponse>>> getAllCustomers() {
     List<CustomerResponse> customers = userService.getAllCustomers();
     return ResponseEntity.ok(ApiResponse.ok(customers));
+  }
+
+  @GetMapping("/paged")
+  @Operation(
+      summary = "Get customers with pagination",
+      description = "Retrieve customers with pagination support")
+  @ApiResponses({
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "200",
+        description = "Customers retrieved successfully",
+        content = @Content(schema = @Schema(implementation = CustomerListResponse.class)))
+  })
+  public ResponseEntity<ApiResponse<CustomerListResponse>> getCustomersPaged(
+      @ParameterObject
+          @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
+          Pageable pageable) {
+    log.info("GET /api/v1/customers/paged - Fetching customers with pagination: {}", pageable);
+    CustomerListResponse customers = userService.getCustomers(pageable);
+    return ResponseEntity.ok(ApiResponse.ok("Customers retrieved successfully", customers));
   }
 
   @GetMapping("/{id}")

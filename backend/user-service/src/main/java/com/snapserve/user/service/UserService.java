@@ -6,14 +6,18 @@ import com.snapserve.common.model.Role;
 import com.snapserve.user.mapper.UserMapper;
 import com.snapserve.user.model.UserEntity;
 import com.snapserve.user.repo.UserRepository;
+import com.snapserve.userclient.dto.customer.CustomerListResponse;
 import com.snapserve.userclient.dto.customer.CustomerRequest;
 import com.snapserve.userclient.dto.customer.CustomerResponse;
+import com.snapserve.userclient.dto.specialist.SpecialistListResponse;
 import com.snapserve.userclient.dto.specialist.SpecialistRequest;
 import com.snapserve.userclient.dto.specialist.SpecialistResponse;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -59,10 +63,24 @@ public class UserService {
     return userMapper.toCustomerResponseList(customers);
   }
 
+  public CustomerListResponse getCustomers(Pageable pageable) {
+    log.debug("Fetching customers with pagination: {}", pageable);
+    Page<UserEntity> customerPage = userRepository.findByRole(Role.CUSTOMER, pageable);
+    log.debug("Found {} customers", customerPage.getTotalElements());
+    return toCustomerListResponse(customerPage);
+  }
+
   public List<SpecialistResponse> getAllSpecialists() {
     List<UserEntity> specialists = userRepository.findByRole(Role.SPECIALIST);
     log.debug("Found {} specialists", specialists.size());
     return userMapper.toSpecialistResponseList(specialists);
+  }
+
+  public SpecialistListResponse getSpecialists(Pageable pageable) {
+    log.debug("Fetching specialists with pagination: {}", pageable);
+    Page<UserEntity> specialistPage = userRepository.findByRole(Role.SPECIALIST, pageable);
+    log.debug("Found {} specialists", specialistPage.getTotalElements());
+    return toSpecialistListResponse(specialistPage);
   }
 
   public CustomerResponse getCustomerById(String id) {
@@ -88,6 +106,14 @@ public class UserService {
         userRepository.findByRoleAndServicesContaining(Role.SPECIALIST, service);
     log.debug("Found {} specialists with service: {}", specialists.size(), service);
     return userMapper.toSpecialistResponseList(specialists);
+  }
+
+  public SpecialistListResponse getSpecialistsByService(String service, Pageable pageable) {
+    log.debug("Fetching specialists by service: {} with pagination: {}", service, pageable);
+    Page<UserEntity> specialistPage =
+        userRepository.findByRoleAndServicesContaining(Role.SPECIALIST, service, pageable);
+    log.debug("Found {} specialists with service: {}", specialistPage.getTotalElements(), service);
+    return toSpecialistListResponse(specialistPage);
   }
 
   public CustomerResponse updateCustomer(String id, CustomerRequest request) {
@@ -157,5 +183,27 @@ public class UserService {
 
     userRepository.delete(specialist);
     log.info("Specialist deleted: {}", specialist.getEmail());
+  }
+
+  private CustomerListResponse toCustomerListResponse(Page<UserEntity> page) {
+    return new CustomerListResponse(
+        userMapper.toCustomerResponseList(page.getContent()),
+        page.getNumber(),
+        page.getSize(),
+        page.getTotalElements(),
+        page.getTotalPages(),
+        page.isFirst(),
+        page.isLast());
+  }
+
+  private SpecialistListResponse toSpecialistListResponse(Page<UserEntity> page) {
+    return new SpecialistListResponse(
+        userMapper.toSpecialistResponseList(page.getContent()),
+        page.getNumber(),
+        page.getSize(),
+        page.getTotalElements(),
+        page.getTotalPages(),
+        page.isFirst(),
+        page.isLast());
   }
 }
