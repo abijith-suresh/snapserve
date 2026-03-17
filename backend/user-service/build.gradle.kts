@@ -18,7 +18,7 @@ dependencies {
     implementation(libs.spring.boot.starter.actuator)
     implementation(libs.spring.boot.starter.validation)
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2")
-    implementation("net.logstash.logback:logstash-logback-encoder:7.4")
+    implementation("net.logstash.logback:logstash-logback-encoder:9.0")
     implementation("org.mapstruct:mapstruct:1.5.5.Final")
     compileOnly("org.projectlombok:lombok-mapstruct-binding:0.2.0")
     compileOnly(libs.lombok)
