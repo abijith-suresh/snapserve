@@ -3,6 +3,7 @@ package com.snapserve.user.service;
 import com.snapserve.common.exception.ConflictException;
 import com.snapserve.common.exception.ResourceNotFoundException;
 import com.snapserve.common.model.Role;
+import com.snapserve.common.mongo.ObjectIdParser;
 import com.snapserve.user.mapper.UserMapper;
 import com.snapserve.user.model.UserEntity;
 import com.snapserve.user.repo.UserRepository;
@@ -49,7 +50,7 @@ public class UserService {
 
     UserEntity user = userMapper.toSpecialistEntity(request);
     user.setRole(Role.SPECIALIST);
-    user.setVerified(false);
+    user.setVerified(true);
     user.setHourlyRate(request.hourlyRate());
     user = userRepository.save(user);
 
@@ -84,7 +85,7 @@ public class UserService {
   }
 
   public CustomerResponse getCustomerById(String id) {
-    ObjectId objectId = new ObjectId(id);
+    ObjectId objectId = parseObjectId(id, "customer");
     UserEntity customer =
         userRepository
             .findByIdAndRole(objectId, Role.CUSTOMER)
@@ -92,8 +93,18 @@ public class UserService {
     return userMapper.toCustomerResponse(customer);
   }
 
+  public CustomerResponse getCustomerByEmail(String email) {
+    UserEntity customer =
+        userRepository
+            .findByEmail(email)
+            .filter(user -> user.getRole() == Role.CUSTOMER)
+            .orElseThrow(
+                () -> new ResourceNotFoundException("Customer not found for email: " + email));
+    return userMapper.toCustomerResponse(customer);
+  }
+
   public SpecialistResponse getSpecialistById(String id) {
-    ObjectId objectId = new ObjectId(id);
+    ObjectId objectId = parseObjectId(id, "specialist");
     UserEntity specialist =
         userRepository
             .findByIdAndRole(objectId, Role.SPECIALIST)
@@ -117,7 +128,7 @@ public class UserService {
   }
 
   public CustomerResponse updateCustomer(String id, CustomerRequest request) {
-    ObjectId objectId = new ObjectId(id);
+    ObjectId objectId = parseObjectId(id, "customer");
     UserEntity customer =
         userRepository
             .findByIdAndRole(objectId, Role.CUSTOMER)
@@ -140,7 +151,7 @@ public class UserService {
   }
 
   public SpecialistResponse updateSpecialist(String id, SpecialistRequest request) {
-    ObjectId objectId = new ObjectId(id);
+    ObjectId objectId = parseObjectId(id, "specialist");
     UserEntity specialist =
         userRepository
             .findByIdAndRole(objectId, Role.SPECIALIST)
@@ -164,7 +175,7 @@ public class UserService {
   }
 
   public void deleteCustomer(String id) {
-    ObjectId objectId = new ObjectId(id);
+    ObjectId objectId = parseObjectId(id, "customer");
     UserEntity customer =
         userRepository
             .findByIdAndRole(objectId, Role.CUSTOMER)
@@ -175,7 +186,7 @@ public class UserService {
   }
 
   public void deleteSpecialist(String id) {
-    ObjectId objectId = new ObjectId(id);
+    ObjectId objectId = parseObjectId(id, "specialist");
     UserEntity specialist =
         userRepository
             .findByIdAndRole(objectId, Role.SPECIALIST)
@@ -205,5 +216,9 @@ public class UserService {
         page.getTotalPages(),
         page.isFirst(),
         page.isLast());
+  }
+
+  private ObjectId parseObjectId(String id, String resourceName) {
+    return ObjectIdParser.parse(id, resourceName);
   }
 }

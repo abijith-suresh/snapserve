@@ -68,6 +68,16 @@ public class CustomerController {
     return ResponseEntity.ok(ApiResponse.ok(customer));
   }
 
+  @GetMapping("/search")
+  @Operation(
+      summary = "Get customer by email",
+      description = "Retrieve a specific customer by their email address")
+  public ResponseEntity<ApiResponse<CustomerResponse>> getCustomerByEmail(
+      @Parameter(description = "Customer email") @RequestParam String email) {
+    CustomerResponse customer = userService.getCustomerByEmail(email);
+    return ResponseEntity.ok(ApiResponse.ok(customer));
+  }
+
   @PostMapping
   @Operation(summary = "Create customer", description = "Create a new customer account")
   public ResponseEntity<ApiResponse<CustomerResponse>> createCustomer(

@@ -12,6 +12,7 @@ dependencyManagement {
 }
 
 dependencies {
+    api(project(":backend:common"))
     compileOnly(libs.spring.cloud.openfeign)
     compileOnly(libs.spring.boot.starter.web)
     compileOnly(libs.spring.boot.starter.validation)
