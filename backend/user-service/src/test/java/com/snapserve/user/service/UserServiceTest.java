@@ -258,6 +258,44 @@ class UserServiceTest {
   }
 
   @Test
+  void deleteCustomerRejectsDeletingAnotherCustomersProfile() {
+    String customerId = new ObjectId().toString();
+    UserEntity existingCustomer = new UserEntity();
+    ReflectionTestUtils.setField(existingCustomer, "id", new ObjectId(customerId));
+    ReflectionTestUtils.setField(existingCustomer, "email", "current@example.com");
+    ReflectionTestUtils.setField(existingCustomer, "role", Role.CUSTOMER);
+
+    when(userRepository.findByIdAndRole(new ObjectId(customerId), Role.CUSTOMER))
+        .thenReturn(java.util.Optional.of(existingCustomer));
+
+    assertThatThrownBy(
+            () -> userService.deleteCustomer(customerId, "other@example.com", "CUSTOMER"))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessage("You can only delete your own customer profile.");
+
+    verify(userRepository, never()).delete(any(UserEntity.class));
+  }
+
+  @Test
+  void deleteSpecialistRejectsDeletingAnotherSpecialistsProfile() {
+    String specialistId = new ObjectId().toString();
+    UserEntity existingSpecialist = new UserEntity();
+    ReflectionTestUtils.setField(existingSpecialist, "id", new ObjectId(specialistId));
+    ReflectionTestUtils.setField(existingSpecialist, "email", "current@example.com");
+    ReflectionTestUtils.setField(existingSpecialist, "role", Role.SPECIALIST);
+
+    when(userRepository.findByIdAndRole(new ObjectId(specialistId), Role.SPECIALIST))
+        .thenReturn(java.util.Optional.of(existingSpecialist));
+
+    assertThatThrownBy(
+            () -> userService.deleteSpecialist(specialistId, "other@example.com", "SPECIALIST"))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessage("You can only delete your own specialist profile.");
+
+    verify(userRepository, never()).delete(any(UserEntity.class));
+  }
+
+  @Test
   void getCustomerByEmailReturnsCustomer() {
     UserEntity customer = new UserEntity();
     ReflectionTestUtils.setField(customer, "id", new ObjectId());
@@ -272,6 +310,58 @@ class UserServiceTest {
 
     assertThat(response.email()).isEqualTo("customer@example.com");
     assertThat(response.name()).isEqualTo("Jamie Customer");
+  }
+
+  @Test
+  void getCustomerByIdRejectsViewingAnotherCustomersProfile() {
+    String customerId = new ObjectId().toString();
+    UserEntity customer = new UserEntity();
+    ReflectionTestUtils.setField(customer, "id", new ObjectId(customerId));
+    ReflectionTestUtils.setField(customer, "email", "owner@example.com");
+    ReflectionTestUtils.setField(customer, "role", Role.CUSTOMER);
+
+    when(userRepository.findByIdAndRole(new ObjectId(customerId), Role.CUSTOMER))
+        .thenReturn(java.util.Optional.of(customer));
+
+    assertThatThrownBy(
+            () -> userService.getCustomerById(customerId, "other@example.com", "CUSTOMER"))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessage("You can only view your own customer profile.");
+  }
+
+  @Test
+  void getCustomerByEmailRejectsNonCustomerRole() {
+    UserEntity customer = new UserEntity();
+    ReflectionTestUtils.setField(customer, "id", new ObjectId());
+    ReflectionTestUtils.setField(customer, "email", "customer@example.com");
+    ReflectionTestUtils.setField(customer, "role", Role.CUSTOMER);
+
+    when(userRepository.findByEmail("customer@example.com"))
+        .thenReturn(java.util.Optional.of(customer));
+
+    assertThatThrownBy(
+            () ->
+                userService.getCustomerByEmail(
+                    "customer@example.com", "specialist@example.com", "SPECIALIST"))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessage("Only customers can view customer profiles.");
+  }
+
+  @Test
+  void getSpecialistByIdRejectsViewingAnotherSpecialistsProfile() {
+    String specialistId = new ObjectId().toString();
+    UserEntity specialist = new UserEntity();
+    ReflectionTestUtils.setField(specialist, "id", new ObjectId(specialistId));
+    ReflectionTestUtils.setField(specialist, "email", "owner@example.com");
+    ReflectionTestUtils.setField(specialist, "role", Role.SPECIALIST);
+
+    when(userRepository.findByIdAndRole(new ObjectId(specialistId), Role.SPECIALIST))
+        .thenReturn(java.util.Optional.of(specialist));
+
+    assertThatThrownBy(
+            () -> userService.getSpecialistById(specialistId, "other@example.com", "SPECIALIST"))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessage("You can only view your own specialist profile.");
   }
 
   @Test
@@ -301,7 +391,10 @@ class UserServiceTest {
 
   @Test
   void deleteSpecialistRejectsMalformedIdBeforeRepositoryAccess() {
-    assertThatThrownBy(() -> userService.deleteSpecialist("not-an-object-id"))
+    assertThatThrownBy(
+            () ->
+                userService.deleteSpecialist(
+                    "not-an-object-id", "specialist@example.com", "SPECIALIST"))
         .isInstanceOf(BadRequestException.class)
         .hasMessage("Invalid specialist ID format.");
 

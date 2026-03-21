@@ -88,30 +88,51 @@ public class UserService {
   }
 
   public CustomerResponse getCustomerById(String id) {
+    return getCustomerById(id, null, null);
+  }
+
+  public CustomerResponse getCustomerById(
+      String id, String authenticatedEmail, String authenticatedRoles) {
     ObjectId objectId = parseObjectId(id, "customer");
     UserEntity customer =
         userRepository
             .findByIdAndRole(objectId, Role.CUSTOMER)
             .orElseThrow(() -> ResourceNotFoundException.of("Customer", id));
+
+    validateCustomerReadOwnership(customer, authenticatedEmail, authenticatedRoles);
     return userMapper.toCustomerResponse(customer);
   }
 
   public CustomerResponse getCustomerByEmail(String email) {
+    return getCustomerByEmail(email, null, null);
+  }
+
+  public CustomerResponse getCustomerByEmail(
+      String email, String authenticatedEmail, String authenticatedRoles) {
     UserEntity customer =
         userRepository
             .findByEmail(email)
             .filter(user -> user.getRole() == Role.CUSTOMER)
             .orElseThrow(
                 () -> new ResourceNotFoundException("Customer not found for email: " + email));
+
+    validateCustomerReadOwnership(customer, authenticatedEmail, authenticatedRoles);
     return userMapper.toCustomerResponse(customer);
   }
 
   public SpecialistResponse getSpecialistById(String id) {
+    return getSpecialistById(id, null, null);
+  }
+
+  public SpecialistResponse getSpecialistById(
+      String id, String authenticatedEmail, String authenticatedRoles) {
     ObjectId objectId = parseObjectId(id, "specialist");
     UserEntity specialist =
         userRepository
             .findByIdAndRole(objectId, Role.SPECIALIST)
             .orElseThrow(() -> ResourceNotFoundException.of("Specialist", id));
+
+    validateSpecialistReadOwnership(specialist, authenticatedEmail, authenticatedRoles);
     return userMapper.toSpecialistResponse(specialist);
   }
 
@@ -193,23 +214,27 @@ public class UserService {
     return userMapper.toSpecialistResponse(specialist);
   }
 
-  public void deleteCustomer(String id) {
+  public void deleteCustomer(String id, String authenticatedEmail, String authenticatedRoles) {
     ObjectId objectId = parseObjectId(id, "customer");
     UserEntity customer =
         userRepository
             .findByIdAndRole(objectId, Role.CUSTOMER)
             .orElseThrow(() -> ResourceNotFoundException.of("Customer", id));
 
+    validateCustomerDeletionOwnership(customer, authenticatedEmail, authenticatedRoles);
+
     userRepository.delete(customer);
     log.info("Customer deleted: {}", customer.getEmail());
   }
 
-  public void deleteSpecialist(String id) {
+  public void deleteSpecialist(String id, String authenticatedEmail, String authenticatedRoles) {
     ObjectId objectId = parseObjectId(id, "specialist");
     UserEntity specialist =
         userRepository
             .findByIdAndRole(objectId, Role.SPECIALIST)
             .orElseThrow(() -> ResourceNotFoundException.of("Specialist", id));
+
+    validateSpecialistDeletionOwnership(specialist, authenticatedEmail, authenticatedRoles);
 
     userRepository.delete(specialist);
     log.info("Specialist deleted: {}", specialist.getEmail());
@@ -252,6 +277,21 @@ public class UserService {
     }
   }
 
+  private void validateCustomerReadOwnership(
+      UserEntity customer, String authenticatedEmail, String authenticatedRoles) {
+    if (authenticatedEmail == null && authenticatedRoles == null) {
+      return;
+    }
+
+    if (!hasRole(authenticatedRoles, Role.CUSTOMER)) {
+      throw new ForbiddenException("Only customers can view customer profiles.");
+    }
+
+    if (!customer.getEmail().equalsIgnoreCase(authenticatedEmail)) {
+      throw new ForbiddenException("You can only view your own customer profile.");
+    }
+  }
+
   private void validateSpecialistOwnership(
       UserEntity specialist, String authenticatedEmail, String authenticatedRoles) {
     if (!hasRole(authenticatedRoles, Role.SPECIALIST)) {
@@ -260,6 +300,43 @@ public class UserService {
 
     if (!specialist.getEmail().equalsIgnoreCase(authenticatedEmail)) {
       throw new ForbiddenException("You can only update your own specialist profile.");
+    }
+  }
+
+  private void validateSpecialistReadOwnership(
+      UserEntity specialist, String authenticatedEmail, String authenticatedRoles) {
+    if (authenticatedEmail == null && authenticatedRoles == null) {
+      return;
+    }
+
+    if (!hasRole(authenticatedRoles, Role.SPECIALIST)) {
+      throw new ForbiddenException("Only specialists can view specialist profiles.");
+    }
+
+    if (!specialist.getEmail().equalsIgnoreCase(authenticatedEmail)) {
+      throw new ForbiddenException("You can only view your own specialist profile.");
+    }
+  }
+
+  private void validateCustomerDeletionOwnership(
+      UserEntity customer, String authenticatedEmail, String authenticatedRoles) {
+    if (!hasRole(authenticatedRoles, Role.CUSTOMER)) {
+      throw new ForbiddenException("Only customers can delete customer profiles.");
+    }
+
+    if (!customer.getEmail().equalsIgnoreCase(authenticatedEmail)) {
+      throw new ForbiddenException("You can only delete your own customer profile.");
+    }
+  }
+
+  private void validateSpecialistDeletionOwnership(
+      UserEntity specialist, String authenticatedEmail, String authenticatedRoles) {
+    if (!hasRole(authenticatedRoles, Role.SPECIALIST)) {
+      throw new ForbiddenException("Only specialists can delete specialist profiles.");
+    }
+
+    if (!specialist.getEmail().equalsIgnoreCase(authenticatedEmail)) {
+      throw new ForbiddenException("You can only delete your own specialist profile.");
     }
   }
 

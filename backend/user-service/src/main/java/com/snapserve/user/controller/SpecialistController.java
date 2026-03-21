@@ -63,8 +63,10 @@ public class SpecialistController {
       summary = "Get specialist by ID",
       description = "Retrieve a specific specialist by their ID")
   public ResponseEntity<ApiResponse<SpecialistResponse>> getSpecialistById(
-      @Parameter(description = "Specialist ID") @PathVariable String id) {
-    SpecialistResponse specialist = userService.getSpecialistById(id);
+      @Parameter(description = "Specialist ID") @PathVariable String id,
+      @RequestHeader(value = "X-User-Email", required = false) String userEmail,
+      @RequestHeader(value = "X-User-Roles", required = false) String userRoles) {
+    SpecialistResponse specialist = userService.getSpecialistById(id, userEmail, userRoles);
     return ResponseEntity.ok(ApiResponse.ok(specialist));
   }
 
@@ -126,8 +128,10 @@ public class SpecialistController {
   @DeleteMapping("/{id}")
   @Operation(summary = "Delete specialist", description = "Delete a specialist by ID")
   public ResponseEntity<ApiResponse<Void>> deleteSpecialist(
-      @Parameter(description = "Specialist ID") @PathVariable String id) {
-    userService.deleteSpecialist(id);
+      @Parameter(description = "Specialist ID") @PathVariable String id,
+      @RequestHeader("X-User-Email") String userEmail,
+      @RequestHeader("X-User-Roles") String userRoles) {
+    userService.deleteSpecialist(id, userEmail, userRoles);
     log.info("Specialist deleted via API: {}", id);
     return ResponseEntity.noContent().build();
   }
