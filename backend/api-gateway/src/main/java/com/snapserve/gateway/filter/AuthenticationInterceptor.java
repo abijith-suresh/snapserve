@@ -6,6 +6,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
+import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -14,6 +16,9 @@ import org.springframework.web.servlet.HandlerInterceptor;
 
 @Component
 public class AuthenticationInterceptor implements HandlerInterceptor {
+
+  static final String USER_EMAIL_ATTRIBUTE = "X-User-Email";
+  static final String USER_ROLES_ATTRIBUTE = "X-User-Roles";
 
   @Autowired private JwtUtils jwtUtils;
   @Autowired private RouteValidator routeValidator;
@@ -41,23 +46,44 @@ public class AuthenticationInterceptor implements HandlerInterceptor {
     }
 
     Claims claims = jwtUtils.extractClaims(token);
-    String roles = claims.get("roles", String.class);
+    String roles = extractRoles(claims);
     if (!hasRequiredRole(roles, path)) {
       response.sendError(HttpStatus.FORBIDDEN.value(), "Insufficient role for this resource");
       return false;
     }
 
-    request.setAttribute("X-User-Email", claims.getSubject());
-    request.setAttribute("X-User-Roles", roles);
+    request.setAttribute(USER_EMAIL_ATTRIBUTE, claims.getSubject());
+    request.setAttribute(USER_ROLES_ATTRIBUTE, roles);
 
     return true;
+  }
+
+  private String extractRoles(Claims claims) {
+    String role = claims.get("role", String.class);
+    if (role != null && !role.isBlank()) {
+      return normalizeRoles(role);
+    }
+
+    return normalizeRoles(claims.get("roles", String.class));
+  }
+
+  private String normalizeRoles(String roles) {
+    if (roles == null || roles.isBlank()) {
+      return null;
+    }
+
+    return Arrays.stream(roles.split(","))
+        .map(String::trim)
+        .filter(role -> !role.isEmpty())
+        .map(role -> role.toUpperCase(Locale.ROOT))
+        .collect(Collectors.joining(","));
   }
 
   private boolean hasRequiredRole(String roles, String path) {
     if (roles == null) return false;
     List<String> roleList = Arrays.asList(roles.split(","));
-    if (path.contains("/specialists")) return roleList.contains("specialist");
-    if (path.contains("/customers")) return roleList.contains("customer");
+    if (path.contains("/specialists")) return roleList.contains("SPECIALIST");
+    if (path.contains("/customers")) return roleList.contains("CUSTOMER");
     return true;
   }
 }
