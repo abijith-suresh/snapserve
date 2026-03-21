@@ -28,7 +28,7 @@ public class UserEntity extends Auditable {
 
   private String name;
 
-  @Indexed private Role role;
+  private Role role;
 
   private String phone;
 

@@ -2,7 +2,6 @@ services:
   # Optional MongoDB container - disable if using MongoDB Atlas
   mongo:
     image: mongo:7-jammy
-    container_name: snapserve-mongo
     restart: ${RESTART_POLICY:-no}
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-admin}
@@ -12,7 +11,19 @@ services:
     volumes:
       - mongo_data:/data/db
     healthcheck:
-      test: ['CMD', 'mongosh', '--eval', "db.adminCommand('ping')"]
+      test:
+        [
+          'CMD',
+          'mongosh',
+          '--username',
+          '${MONGO_ROOT_USER:-admin}',
+          '--password',
+          '${MONGO_ROOT_PASSWORD:-password}',
+          '--authenticationDatabase',
+          'admin',
+          '--eval',
+          "db.adminCommand('ping')",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -24,10 +35,9 @@ services:
     build:
       context: .
       dockerfile: backend/auth-service/Dockerfile
-    container_name: snapserve-auth-service
     restart: ${RESTART_POLICY:-no}
     environment:
-      MONGODB_URI: ${MONGODB_URI}
+      MONGODB_URI: ${MONGODB_URI:-mongodb://admin:password@mongo:27017/snapserve-auth?authSource=admin}
       JWT_SECRET: ${JWT_SECRET}
     ports:
       - '9000:9000'
@@ -48,10 +58,9 @@ services:
     build:
       context: .
       dockerfile: backend/user-service/Dockerfile
-    container_name: snapserve-user-service
     restart: ${RESTART_POLICY:-no}
     environment:
-      MONGODB_URI: ${MONGODB_URI}
+      MONGODB_URI: ${MONGODB_URI:-mongodb://admin:password@mongo:27017/snapserve-user?authSource=admin}
       NOTIFICATION_SERVICE_URL: http://notification-service:9003
     ports:
       - '9001:9001'
@@ -74,10 +83,9 @@ services:
     build:
       context: .
       dockerfile: backend/booking-service/Dockerfile
-    container_name: snapserve-booking-service
     restart: ${RESTART_POLICY:-no}
     environment:
-      MONGODB_URI: ${MONGODB_URI}
+      MONGODB_URI: ${MONGODB_URI:-mongodb://admin:password@mongo:27017/snapserve-booking?authSource=admin}
       USER_SERVICE_URL: http://user-service:9001
       NOTIFICATION_SERVICE_URL: http://notification-service:9003
     ports:
@@ -103,13 +111,16 @@ services:
     build:
       context: .
       dockerfile: backend/notification-service/Dockerfile
-    container_name: snapserve-notification-service
     restart: ${RESTART_POLICY:-no}
     environment:
-      GMAIL_USERNAME: ${GMAIL_USERNAME}
-      GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD}
+      MONGODB_URI: ${MONGODB_URI:-mongodb://admin:password@mongo:27017/snapserve-notifications?authSource=admin}
+      GMAIL_USERNAME: ${GMAIL_USERNAME:-}
+      GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD:-}
     ports:
       - '9003:9003'
+    depends_on:
+      mongo:
+        condition: service_healthy
     healthcheck:
       test:
         ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:9003/actuator/health']
@@ -124,7 +135,6 @@ services:
     build:
       context: .
       dockerfile: backend/api-gateway/Dockerfile
-    container_name: snapserve-api-gateway
     restart: ${RESTART_POLICY:-no}
     environment:
       AUTH_SERVICE_URL: http://auth-service:9000

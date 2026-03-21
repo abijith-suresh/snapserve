@@ -14,7 +14,7 @@ dependencyManagement {
 dependencies {
     api(libs.spring.boot.starter.web)
     api(libs.spring.boot.starter.validation)
-    api(libs.spring.boot.starter.data.mongodb)
+    compileOnly(libs.spring.boot.starter.data.mongodb)
     api(libs.jjwt.api)
     compileOnly(libs.lombok)
     annotationProcessor(libs.lombok)

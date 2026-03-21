@@ -1,14 +1,16 @@
 spring:
   application:
     name: notification-service
+  mongodb:
+    uri: ${MONGODB_URI:mongodb://localhost:27017/snapserve-notifications}
   data:
     mongodb:
       uri: ${MONGODB_URI:mongodb://localhost:27017/snapserve-notifications}
   mail:
     host: smtp.gmail.com
     port: 587
-    username: ${GMAIL_USERNAME}
-    password: ${GMAIL_APP_PASSWORD}
+    username: ${GMAIL_USERNAME:}
+    password: ${GMAIL_APP_PASSWORD:}
     properties:
       mail.smtp.auth: true
       mail.smtp.starttls.enable: true
@@ -17,6 +19,9 @@ server:
   port: 9003
 
 management:
+  health:
+    mail:
+      enabled: ${MAIL_HEALTH_ENABLED:false}
   endpoints:
     web:
       exposure:

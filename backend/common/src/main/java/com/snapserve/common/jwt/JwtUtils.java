@@ -7,9 +7,11 @@ import jakarta.annotation.PostConstruct;
 import java.nio.charset.StandardCharsets;
 import javax.crypto.SecretKey;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Component
+@ConditionalOnProperty(prefix = "jwt", name = "secret")
 public class JwtUtils {
 
   @Value("${jwt.secret}")

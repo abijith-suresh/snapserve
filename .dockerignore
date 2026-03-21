@@ -1,0 +1,14 @@
+.git
+.github
+.gradle
+.idea
+.vscode
+node_modules
+frontend/node_modules
+frontend/dist
+build
+backend/**/build
+backend/**/bin
+**/.DS_Store
+**/*.log
+coverage
