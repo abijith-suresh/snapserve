@@ -10,11 +10,14 @@ import com.snapserve.booking.service.mapper.BookingMapper;
 import com.snapserve.common.exception.ConflictException;
 import com.snapserve.common.exception.ResourceNotFoundException;
 import com.snapserve.common.exception.ServiceUnavailableException;
+import com.snapserve.common.mongo.ObjectIdParser;
 import com.snapserve.userclient.client.UserServiceClient;
+import com.snapserve.userclient.dto.customer.CustomerResponse;
 import feign.FeignException;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
@@ -31,6 +34,7 @@ public class BookingService {
   private final BookingRepository bookingRepository;
   private final BookingMapper bookingMapper;
   private final UserServiceClient userServiceClient;
+  private final BookingNotificationDispatcher bookingNotificationDispatcher;
 
   @Transactional(readOnly = true)
   public BookingResponse getBookingById(String id) {
@@ -38,7 +42,7 @@ public class BookingService {
 
     Booking booking =
         bookingRepository
-            .findById(new ObjectId(id))
+            .findById(parseObjectId(id, "booking"))
             .orElseThrow(() -> ResourceNotFoundException.of("Booking", id));
 
     log.debug("Found booking: {}", booking);
@@ -130,7 +134,7 @@ public class BookingService {
         request.customerId(),
         request.specialistId());
 
-    validateCustomerExists(request.customerId());
+    CustomerResponse customer = requireCustomer(request.customerId());
     validateSpecialistExists(request.specialistId());
     checkForBookingConflicts(request.specialistId(), request.bookingDate());
 
@@ -141,8 +145,15 @@ public class BookingService {
 
     log.info("Booking created successfully with id: {}", savedBooking.getId());
 
-    // TODO: Publish async event for notification-service to send confirmation email
-    // eventPublisher.publishEvent(new BookingCreatedEvent(savedBooking));
+    try {
+      bookingNotificationDispatcher.sendBookingCreatedConfirmation(savedBooking, customer);
+    } catch (RuntimeException ex) {
+      log.error(
+          "Booking {} was persisted but confirmation notification failed: {}",
+          savedBooking.getId(),
+          ex.getMessage(),
+          ex);
+    }
 
     return bookingMapper.toResponse(savedBooking);
   }
@@ -153,12 +164,14 @@ public class BookingService {
 
     Booking booking =
         bookingRepository
-            .findById(new ObjectId(id))
+            .findById(parseObjectId(id, "booking"))
             .orElseThrow(() -> ResourceNotFoundException.of("Booking", id));
 
     if (request.bookingDate() != null) {
       checkForBookingConflicts(booking.getSpecialistId(), request.bookingDate(), id);
     }
+
+    validateStatusTransition(booking.getStatus(), request.status());
 
     bookingMapper.updateEntityFromRequest(request, booking);
 
@@ -176,7 +189,7 @@ public class BookingService {
   public void deleteBooking(String id) {
     log.info("Deleting booking with id: {}", id);
 
-    ObjectId objectId = new ObjectId(id);
+    ObjectId objectId = parseObjectId(id, "booking");
     Booking booking =
         bookingRepository
             .findById(objectId)
@@ -194,9 +207,17 @@ public class BookingService {
   public void validateCustomerExists(String customerId) {
     log.debug("Validating customer exists: {}", customerId);
 
+    requireCustomer(customerId);
+    log.debug("Customer {} validated successfully", customerId);
+  }
+
+  @Transactional(readOnly = true)
+  public CustomerResponse requireCustomer(String customerId) {
+    log.debug("Loading customer: {}", customerId);
+
     try {
-      userServiceClient.getCustomerById(customerId);
-      log.debug("Customer {} validated successfully", customerId);
+      return requireResponseBody(
+          userServiceClient.getCustomerById(customerId), "customer", customerId);
     } catch (FeignException.NotFound e) {
       log.warn("Customer not found: {}", customerId);
       throw ResourceNotFoundException.of("Customer", customerId);
@@ -211,7 +232,8 @@ public class BookingService {
     log.debug("Validating specialist exists: {}", specialistId);
 
     try {
-      userServiceClient.getSpecialistById(specialistId);
+      requireResponseBody(
+          userServiceClient.getSpecialistById(specialistId), "specialist", specialistId);
       log.debug("Specialist {} validated successfully", specialistId);
     } catch (FeignException.NotFound e) {
       log.warn("Specialist not found: {}", specialistId);
@@ -258,6 +280,25 @@ public class BookingService {
         "No booking conflicts found for specialist: {} at time: {}", specialistId, bookingDate);
   }
 
+  private void validateStatusTransition(String currentStatus, String requestedStatus) {
+    if (requestedStatus == null || requestedStatus.equals(currentStatus)) {
+      return;
+    }
+
+    Map<String, List<String>> allowedTransitions =
+        Map.of(
+            "PENDING", List.of("CONFIRMED", "CANCELLED"),
+            "CONFIRMED", List.of("COMPLETED", "CANCELLED"),
+            "CANCELLED", List.of(),
+            "COMPLETED", List.of());
+
+    List<String> nextStatuses = allowedTransitions.getOrDefault(currentStatus, List.of());
+    if (!nextStatuses.contains(requestedStatus)) {
+      throw new com.snapserve.common.exception.BadRequestException(
+          "Booking cannot transition from " + currentStatus + " to " + requestedStatus + ".");
+    }
+  }
+
   private BookingListResponse toBookingListResponse(Page<Booking> page) {
     return new BookingListResponse(
         bookingMapper.toResponseList(page.getContent()),
@@ -267,5 +308,21 @@ public class BookingService {
         page.getTotalPages(),
         page.isFirst(),
         page.isLast());
+  }
+
+  private ObjectId parseObjectId(String id, String resourceName) {
+    return ObjectIdParser.parse(id, resourceName);
+  }
+
+  private <T> T requireResponseBody(
+      com.snapserve.common.response.ApiResponse<T> response,
+      String resourceName,
+      String identifier) {
+    if (response == null || response.getData() == null) {
+      throw new ServiceUnavailableException(
+          "Unable to validate " + resourceName + ". Please try again later.");
+    }
+
+    return response.getData();
   }
 }

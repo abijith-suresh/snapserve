@@ -13,6 +13,11 @@ import com.snapserve.booking.service.mapper.ReviewMapper;
 import com.snapserve.common.exception.BadRequestException;
 import com.snapserve.common.exception.ConflictException;
 import com.snapserve.common.exception.ResourceNotFoundException;
+import com.snapserve.common.exception.ServiceUnavailableException;
+import com.snapserve.common.mongo.ObjectIdParser;
+import com.snapserve.common.response.ApiResponse;
+import com.snapserve.userclient.client.UserServiceClient;
+import feign.FeignException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +37,7 @@ public class ReviewService {
   private final ReviewRepository reviewRepository;
   private final BookingRepository bookingRepository;
   private final ReviewMapper reviewMapper;
+  private final UserServiceClient userServiceClient;
 
   @Transactional(readOnly = true)
   public ReviewResponse getReviewById(String id) {
@@ -39,7 +45,7 @@ public class ReviewService {
 
     Review review =
         reviewRepository
-            .findById(new ObjectId(id))
+            .findById(parseObjectId(id, "review"))
             .orElseThrow(() -> ResourceNotFoundException.of("Review", id));
 
     log.debug("Found review: {}", review);
@@ -123,10 +129,14 @@ public class ReviewService {
   }
 
   @Transactional
-  public ReviewResponse createReview(String customerId, ReviewRequest request) {
-    log.info("Creating review for booking: {} by customer: {}", request.bookingId(), customerId);
+  public ReviewResponse createReview(String userEmail, ReviewRequest request) {
+    log.info(
+        "Creating review for booking: {} by authenticated user: {}",
+        request.bookingId(),
+        userEmail);
 
-    ObjectId bookingObjectId = new ObjectId(request.bookingId());
+    ObjectId bookingObjectId = parseBookingId(request.bookingId());
+    String customerId = resolveAuthenticatedCustomerId(userEmail);
 
     Booking booking =
         bookingRepository
@@ -172,10 +182,11 @@ public class ReviewService {
   }
 
   @Transactional
-  public void deleteReview(String id, String customerId) {
-    log.info("Deleting review with id: {} by customer: {}", id, customerId);
+  public void deleteReview(String id, String userEmail) {
+    log.info("Deleting review with id: {} by authenticated user: {}", id, userEmail);
 
-    ObjectId reviewObjectId = new ObjectId(id);
+    ObjectId reviewObjectId = parseObjectId(id, "review");
+    String customerId = resolveAuthenticatedCustomerId(userEmail);
 
     Review review =
         reviewRepository
@@ -208,5 +219,34 @@ public class ReviewService {
         page.getTotalPages(),
         page.isFirst(),
         page.isLast());
+  }
+
+  private ObjectId parseBookingId(String bookingId) {
+    return parseObjectId(bookingId, "booking");
+  }
+
+  private ObjectId parseObjectId(String id, String resourceName) {
+    return ObjectIdParser.parse(id, resourceName);
+  }
+
+  private String resolveAuthenticatedCustomerId(String userEmail) {
+    try {
+      ApiResponse<com.snapserve.userclient.dto.customer.CustomerResponse> response =
+          userServiceClient.getCustomerByEmail(userEmail);
+      if (response == null || response.getData() == null) {
+        throw new ServiceUnavailableException(
+            "Unable to resolve authenticated customer. Please try again later.");
+      }
+      return response.getData().id();
+    } catch (FeignException.NotFound e) {
+      log.warn("Authenticated customer not found for email: {}", userEmail);
+      throw new ResourceNotFoundException(
+          "Authenticated customer not found for email: " + userEmail);
+    } catch (FeignException e) {
+      log.error(
+          "Error resolving authenticated customer for email {}: {}", userEmail, e.getMessage());
+      throw new ServiceUnavailableException(
+          "Unable to resolve authenticated customer. Please try again later.");
+    }
   }
 }
