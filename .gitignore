@@ -4,6 +4,7 @@
 # Build outputs
 build/
 .gradle/
+bin/
 *.class
 *.jar
 out/
