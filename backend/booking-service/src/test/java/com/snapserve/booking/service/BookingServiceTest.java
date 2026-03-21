@@ -207,17 +207,54 @@ class BookingServiceTest {
   }
 
   @Test
+  void getBookingByIdRejectsCustomerAccessingAnotherCustomersBooking() {
+    Booking booking = bookingWithCustomerAndSpecialist("customer-2", "specialist-1", "PENDING");
+    String bookingId = ((ObjectId) ReflectionTestUtils.getField(booking, "id")).toString();
+
+    when(bookingRepository.findById((ObjectId) ReflectionTestUtils.getField(booking, "id")))
+        .thenReturn(Optional.of(booking));
+    when(userServiceClient.getCustomerByEmail("customer@snapserve.com"))
+        .thenReturn(ApiResponse.ok(customerResponse()));
+
+    assertThatThrownBy(
+            () -> bookingService.getBookingById(bookingId, "customer@snapserve.com", "CUSTOMER"))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessage("You can only access your own or assigned bookings.");
+  }
+
+  @Test
+  void getBookingByIdAllowsAssignedSpecialist() {
+    Booking booking = bookingWithStatus("PENDING");
+    String bookingId = ((ObjectId) ReflectionTestUtils.getField(booking, "id")).toString();
+
+    when(bookingRepository.findById((ObjectId) ReflectionTestUtils.getField(booking, "id")))
+        .thenReturn(Optional.of(booking));
+    when(userServiceClient.getSpecialistById("specialist-1"))
+        .thenReturn(ApiResponse.ok(specialistResponse()));
+
+    BookingResponse response =
+        bookingService.getBookingById(bookingId, "morgan@example.com", "SPECIALIST");
+
+    assertThat(response.id()).isEqualTo(bookingId);
+  }
+
+  @Test
   void updateBookingRejectsSkippingFromPendingToCompleted() {
     Booking booking = bookingWithStatus("PENDING");
     String bookingId = ((ObjectId) ReflectionTestUtils.getField(booking, "id")).toString();
 
     when(bookingRepository.findById((ObjectId) ReflectionTestUtils.getField(booking, "id")))
         .thenReturn(Optional.of(booking));
+    when(userServiceClient.getSpecialistById("specialist-1"))
+        .thenReturn(ApiResponse.ok(specialistResponse()));
 
     assertThatThrownBy(
             () ->
                 bookingService.updateBooking(
-                    bookingId, new UpdateBookingRequest(null, "COMPLETED", null)))
+                    bookingId,
+                    "morgan@example.com",
+                    "SPECIALIST",
+                    new UpdateBookingRequest(null, "COMPLETED", null)))
         .isInstanceOf(BadRequestException.class)
         .hasMessage("Booking cannot transition from PENDING to COMPLETED.");
 
@@ -231,13 +268,87 @@ class BookingServiceTest {
 
     when(bookingRepository.findById((ObjectId) ReflectionTestUtils.getField(booking, "id")))
         .thenReturn(Optional.of(booking));
+    when(userServiceClient.getSpecialistById("specialist-1"))
+        .thenReturn(ApiResponse.ok(specialistResponse()));
 
     assertThatThrownBy(
             () ->
                 bookingService.updateBooking(
-                    bookingId, new UpdateBookingRequest(null, "CONFIRMED", null)))
+                    bookingId,
+                    "morgan@example.com",
+                    "SPECIALIST",
+                    new UpdateBookingRequest(null, "CONFIRMED", null)))
         .isInstanceOf(BadRequestException.class)
         .hasMessage("Booking cannot transition from CANCELLED to CONFIRMED.");
+
+    verify(bookingRepository, never()).save(any(Booking.class));
+  }
+
+  @Test
+  void updateBookingRejectsCustomerChangingAnotherCustomersBooking() {
+    Booking booking = bookingWithCustomerAndSpecialist("customer-2", "specialist-1", "PENDING");
+    String bookingId = ((ObjectId) ReflectionTestUtils.getField(booking, "id")).toString();
+
+    when(bookingRepository.findById((ObjectId) ReflectionTestUtils.getField(booking, "id")))
+        .thenReturn(Optional.of(booking));
+    when(userServiceClient.getCustomerByEmail("customer@snapserve.com"))
+        .thenReturn(ApiResponse.ok(customerResponse()));
+
+    assertThatThrownBy(
+            () ->
+                bookingService.updateBooking(
+                    bookingId,
+                    "customer@snapserve.com",
+                    "CUSTOMER",
+                    new UpdateBookingRequest(null, "CANCELLED", null)))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessage("You can only update your own or assigned bookings.");
+
+    verify(bookingRepository, never()).save(any(Booking.class));
+  }
+
+  @Test
+  void updateBookingRejectsCustomerConfirmingOwnBooking() {
+    Booking booking = bookingWithStatus("PENDING");
+    String bookingId = ((ObjectId) ReflectionTestUtils.getField(booking, "id")).toString();
+
+    when(bookingRepository.findById((ObjectId) ReflectionTestUtils.getField(booking, "id")))
+        .thenReturn(Optional.of(booking));
+    when(userServiceClient.getCustomerByEmail("customer@snapserve.com"))
+        .thenReturn(ApiResponse.ok(customerResponse()));
+
+    assertThatThrownBy(
+            () ->
+                bookingService.updateBooking(
+                    bookingId,
+                    "customer@snapserve.com",
+                    "CUSTOMER",
+                    new UpdateBookingRequest(null, "CONFIRMED", null)))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessage("Customers can only cancel their own bookings.");
+
+    verify(bookingRepository, never()).save(any(Booking.class));
+  }
+
+  @Test
+  void updateBookingRejectsCustomerCancellingOwnBookingWhileChangingNotes() {
+    Booking booking = bookingWithStatus("PENDING");
+    String bookingId = ((ObjectId) ReflectionTestUtils.getField(booking, "id")).toString();
+
+    when(bookingRepository.findById((ObjectId) ReflectionTestUtils.getField(booking, "id")))
+        .thenReturn(Optional.of(booking));
+    when(userServiceClient.getCustomerByEmail("customer@snapserve.com"))
+        .thenReturn(ApiResponse.ok(customerResponse()));
+
+    assertThatThrownBy(
+            () ->
+                bookingService.updateBooking(
+                    bookingId,
+                    "customer@snapserve.com",
+                    "CUSTOMER",
+                    new UpdateBookingRequest(null, "CANCELLED", "Changed notes")))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessage("Customers can only cancel their own bookings.");
 
     verify(bookingRepository, never()).save(any(Booking.class));
   }
@@ -249,11 +360,17 @@ class BookingServiceTest {
 
     when(bookingRepository.findById((ObjectId) ReflectionTestUtils.getField(booking, "id")))
         .thenReturn(Optional.of(booking));
+    when(userServiceClient.getSpecialistById("specialist-1"))
+        .thenReturn(ApiResponse.ok(specialistResponse()));
     when(bookingRepository.save(any(Booking.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
     BookingResponse response =
-        bookingService.updateBooking(bookingId, new UpdateBookingRequest(null, "CONFIRMED", null));
+        bookingService.updateBooking(
+            bookingId,
+            "morgan@example.com",
+            "SPECIALIST",
+            new UpdateBookingRequest(null, "CONFIRMED", null));
 
     assertThat(response.status()).isEqualTo("CONFIRMED");
     verify(bookingRepository).save(booking);
@@ -267,16 +384,23 @@ class BookingServiceTest {
 
     when(bookingRepository.findById((ObjectId) ReflectionTestUtils.getField(booking, "id")))
         .thenReturn(Optional.of(booking));
+    when(userServiceClient.getCustomerByEmail("customer@snapserve.com"))
+        .thenReturn(ApiResponse.ok(customerResponse()));
     when(bookingRepository.save(any(Booking.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
     when(userServiceClient.getCustomerById("customer-1")).thenReturn(ApiResponse.ok(customer));
 
     BookingResponse response =
-        bookingService.updateBooking(bookingId, new UpdateBookingRequest(null, "CANCELLED", null));
+        bookingService.updateBooking(
+            bookingId,
+            "customer@snapserve.com",
+            "CUSTOMER",
+            new UpdateBookingRequest(null, "CANCELLED", null));
 
     assertThat(response.status()).isEqualTo("CANCELLED");
     InOrder inOrder =
         Mockito.inOrder(bookingRepository, userServiceClient, bookingNotificationDispatcher);
+    inOrder.verify(userServiceClient).getCustomerByEmail("customer@snapserve.com");
     inOrder.verify(bookingRepository).save(booking);
     inOrder.verify(userServiceClient).getCustomerById("customer-1");
     inOrder
@@ -292,16 +416,23 @@ class BookingServiceTest {
 
     when(bookingRepository.findById((ObjectId) ReflectionTestUtils.getField(booking, "id")))
         .thenReturn(Optional.of(booking));
+    when(userServiceClient.getSpecialistById("specialist-1"))
+        .thenReturn(ApiResponse.ok(specialistResponse()));
     when(bookingRepository.save(any(Booking.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
     when(userServiceClient.getCustomerById("customer-1")).thenReturn(ApiResponse.ok(customer));
 
     BookingResponse response =
-        bookingService.updateBooking(bookingId, new UpdateBookingRequest(null, "COMPLETED", null));
+        bookingService.updateBooking(
+            bookingId,
+            "morgan@example.com",
+            "SPECIALIST",
+            new UpdateBookingRequest(null, "COMPLETED", null));
 
     assertThat(response.status()).isEqualTo("COMPLETED");
     InOrder inOrder =
         Mockito.inOrder(bookingRepository, userServiceClient, bookingNotificationDispatcher);
+    inOrder.verify(userServiceClient).getSpecialistById("specialist-1");
     inOrder.verify(bookingRepository).save(booking);
     inOrder.verify(userServiceClient).getCustomerById("customer-1");
     inOrder
@@ -316,15 +447,22 @@ class BookingServiceTest {
 
     when(bookingRepository.findById((ObjectId) ReflectionTestUtils.getField(booking, "id")))
         .thenReturn(Optional.of(booking));
+    when(userServiceClient.getSpecialistById("specialist-1"))
+        .thenReturn(ApiResponse.ok(specialistResponse()));
     when(bookingRepository.save(any(Booking.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
     BookingResponse response =
-        bookingService.updateBooking(bookingId, new UpdateBookingRequest(null, "CONFIRMED", null));
+        bookingService.updateBooking(
+            bookingId,
+            "morgan@example.com",
+            "SPECIALIST",
+            new UpdateBookingRequest(null, "CONFIRMED", null));
 
     assertThat(response.status()).isEqualTo("CONFIRMED");
     verify(bookingRepository).save(booking);
-    verifyNoInteractions(userServiceClient, bookingNotificationDispatcher);
+    verify(userServiceClient).getSpecialistById("specialist-1");
+    verifyNoInteractions(bookingNotificationDispatcher);
   }
 
   @Test
@@ -335,6 +473,8 @@ class BookingServiceTest {
 
     when(bookingRepository.findById((ObjectId) ReflectionTestUtils.getField(booking, "id")))
         .thenReturn(Optional.of(booking));
+    when(userServiceClient.getCustomerByEmail("customer@snapserve.com"))
+        .thenReturn(ApiResponse.ok(customerResponse()));
     when(bookingRepository.save(any(Booking.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
     when(userServiceClient.getCustomerById("customer-1")).thenReturn(ApiResponse.ok(customer));
@@ -343,7 +483,11 @@ class BookingServiceTest {
         .sendBookingCancelledNotification(booking, customer);
 
     BookingResponse response =
-        bookingService.updateBooking(bookingId, new UpdateBookingRequest(null, "CANCELLED", null));
+        bookingService.updateBooking(
+            bookingId,
+            "customer@snapserve.com",
+            "CUSTOMER",
+            new UpdateBookingRequest(null, "CANCELLED", null));
 
     assertThat(response.status()).isEqualTo("CANCELLED");
     verify(bookingRepository).save(booking);
@@ -357,13 +501,19 @@ class BookingServiceTest {
 
     when(bookingRepository.findById((ObjectId) ReflectionTestUtils.getField(booking, "id")))
         .thenReturn(Optional.of(booking));
+    when(userServiceClient.getCustomerByEmail("customer@snapserve.com"))
+        .thenReturn(ApiResponse.ok(customerResponse()));
     when(bookingRepository.save(any(Booking.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
     when(userServiceClient.getCustomerById("customer-1"))
         .thenThrow(new ServiceUnavailableException("user service unavailable"));
 
     BookingResponse response =
-        bookingService.updateBooking(bookingId, new UpdateBookingRequest(null, "CANCELLED", null));
+        bookingService.updateBooking(
+            bookingId,
+            "customer@snapserve.com",
+            "CUSTOMER",
+            new UpdateBookingRequest(null, "CANCELLED", null));
 
     assertThat(response.status()).isEqualTo("CANCELLED");
     verify(bookingRepository).save(booking);
@@ -372,8 +522,60 @@ class BookingServiceTest {
   }
 
   @Test
+  void deleteBookingRejectsAssignedSpecialist() {
+    Booking booking = bookingWithStatus("PENDING");
+    String bookingId = ((ObjectId) ReflectionTestUtils.getField(booking, "id")).toString();
+
+    when(bookingRepository.findById((ObjectId) ReflectionTestUtils.getField(booking, "id")))
+        .thenReturn(Optional.of(booking));
+
+    assertThatThrownBy(
+            () -> bookingService.deleteBooking(bookingId, "morgan@example.com", "SPECIALIST"))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessage("Only customers can delete their own pending bookings.");
+
+    verify(bookingRepository, never()).delete(any(Booking.class));
+  }
+
+  @Test
+  void deleteBookingRejectsCustomerDeletingNonPendingBooking() {
+    Booking booking = bookingWithStatus("CONFIRMED");
+    String bookingId = ((ObjectId) ReflectionTestUtils.getField(booking, "id")).toString();
+
+    when(bookingRepository.findById((ObjectId) ReflectionTestUtils.getField(booking, "id")))
+        .thenReturn(Optional.of(booking));
+    when(userServiceClient.getCustomerByEmail("customer@snapserve.com"))
+        .thenReturn(ApiResponse.ok(customerResponse()));
+
+    assertThatThrownBy(
+            () -> bookingService.deleteBooking(bookingId, "customer@snapserve.com", "CUSTOMER"))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessage("Only pending bookings can be deleted.");
+
+    verify(bookingRepository, never()).delete(any(Booking.class));
+  }
+
+  @Test
+  void deleteBookingAllowsCustomerDeletingOwnPendingBooking() {
+    Booking booking = bookingWithStatus("PENDING");
+    String bookingId = ((ObjectId) ReflectionTestUtils.getField(booking, "id")).toString();
+
+    when(bookingRepository.findById((ObjectId) ReflectionTestUtils.getField(booking, "id")))
+        .thenReturn(Optional.of(booking));
+    when(userServiceClient.getCustomerByEmail("customer@snapserve.com"))
+        .thenReturn(ApiResponse.ok(customerResponse()));
+
+    bookingService.deleteBooking(bookingId, "customer@snapserve.com", "CUSTOMER");
+
+    verify(bookingRepository).delete(booking);
+  }
+
+  @Test
   void getBookingByIdRejectsMalformedIdBeforeRepositoryAccess() {
-    assertThatThrownBy(() -> bookingService.getBookingById("not-an-object-id"))
+    assertThatThrownBy(
+            () ->
+                bookingService.getBookingById(
+                    "not-an-object-id", "customer@snapserve.com", "CUSTOMER"))
         .isInstanceOf(BadRequestException.class)
         .hasMessage("Invalid booking ID format.");
 
@@ -382,7 +584,10 @@ class BookingServiceTest {
 
   @Test
   void deleteBookingRejectsMalformedIdBeforeRepositoryAccess() {
-    assertThatThrownBy(() -> bookingService.deleteBooking("not-an-object-id"))
+    assertThatThrownBy(
+            () ->
+                bookingService.deleteBooking(
+                    "not-an-object-id", "customer@snapserve.com", "CUSTOMER"))
         .isInstanceOf(BadRequestException.class)
         .hasMessage("Invalid booking ID format.");
 
@@ -390,10 +595,15 @@ class BookingServiceTest {
   }
 
   private Booking bookingWithStatus(String status) {
+    return bookingWithCustomerAndSpecialist("customer-1", "specialist-1", status);
+  }
+
+  private Booking bookingWithCustomerAndSpecialist(
+      String customerId, String specialistId, String status) {
     Booking booking = new Booking();
     ReflectionTestUtils.setField(booking, "id", new ObjectId());
-    ReflectionTestUtils.setField(booking, "customerId", "customer-1");
-    ReflectionTestUtils.setField(booking, "specialistId", "specialist-1");
+    ReflectionTestUtils.setField(booking, "customerId", customerId);
+    ReflectionTestUtils.setField(booking, "specialistId", specialistId);
     ReflectionTestUtils.setField(booking, "bookingDate", LocalDateTime.of(2026, 4, 1, 10, 0));
     ReflectionTestUtils.setField(booking, "status", status);
     return booking;

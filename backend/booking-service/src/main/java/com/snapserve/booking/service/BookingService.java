@@ -14,6 +14,7 @@ import com.snapserve.common.exception.ServiceUnavailableException;
 import com.snapserve.common.mongo.ObjectIdParser;
 import com.snapserve.userclient.client.UserServiceClient;
 import com.snapserve.userclient.dto.customer.CustomerResponse;
+import com.snapserve.userclient.dto.specialist.SpecialistResponse;
 import feign.FeignException;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -40,13 +41,15 @@ public class BookingService {
   private final BookingNotificationDispatcher bookingNotificationDispatcher;
 
   @Transactional(readOnly = true)
-  public BookingResponse getBookingById(String id) {
+  public BookingResponse getBookingById(String id, String userEmail, String userRoles) {
     log.info("Fetching booking with id: {}", id);
 
     Booking booking =
         bookingRepository
             .findById(parseObjectId(id, "booking"))
             .orElseThrow(() -> ResourceNotFoundException.of("Booking", id));
+
+    validateBookingAccess(booking, userEmail, userRoles);
 
     log.debug("Found booking: {}", booking);
     return bookingMapper.toResponse(booking);
@@ -167,13 +170,16 @@ public class BookingService {
   }
 
   @Transactional
-  public BookingResponse updateBooking(String id, UpdateBookingRequest request) {
+  public BookingResponse updateBooking(
+      String id, String userEmail, String userRoles, UpdateBookingRequest request) {
     log.info("Updating booking with id: {}", id);
 
     Booking booking =
         bookingRepository
             .findById(parseObjectId(id, "booking"))
             .orElseThrow(() -> ResourceNotFoundException.of("Booking", id));
+
+    validateBookingUpdateAccess(booking, userEmail, userRoles, request);
 
     if (request.bookingDate() != null) {
       checkForBookingConflicts(booking.getSpecialistId(), request.bookingDate(), id);
@@ -194,7 +200,7 @@ public class BookingService {
   }
 
   @Transactional
-  public void deleteBooking(String id) {
+  public void deleteBooking(String id, String userEmail, String userRoles) {
     log.info("Deleting booking with id: {}", id);
 
     ObjectId objectId = parseObjectId(id, "booking");
@@ -202,6 +208,8 @@ public class BookingService {
         bookingRepository
             .findById(objectId)
             .orElseThrow(() -> ResourceNotFoundException.of("Booking", id));
+
+    validateBookingDeletionAccess(booking, userEmail, userRoles);
 
     bookingRepository.delete(booking);
 
@@ -371,8 +379,89 @@ public class BookingService {
     return ObjectIdParser.parse(id, resourceName);
   }
 
+  private void validateBookingAccess(Booking booking, String userEmail, String userRoles) {
+    if (hasRole(userRoles, "CUSTOMER")) {
+      String authenticatedCustomerId = resolveAuthenticatedCustomerId(userEmail, userRoles);
+      if (booking.getCustomerId().equals(authenticatedCustomerId)) {
+        return;
+      }
+    }
+
+    if (hasRole(userRoles, "SPECIALIST")) {
+      SpecialistResponse specialist = requireSpecialist(booking.getSpecialistId());
+      if (specialist.email().equalsIgnoreCase(userEmail)) {
+        return;
+      }
+    }
+
+    throw new ForbiddenException("You can only access your own or assigned bookings.");
+  }
+
+  private void validateBookingUpdateAccess(
+      Booking booking, String userEmail, String userRoles, UpdateBookingRequest request) {
+    if (hasRole(userRoles, "CUSTOMER")) {
+      String authenticatedCustomerId = resolveAuthenticatedCustomerId(userEmail, userRoles);
+      if (!booking.getCustomerId().equals(authenticatedCustomerId)) {
+        throw new ForbiddenException("You can only update your own or assigned bookings.");
+      }
+
+      boolean isCustomerCancellationOnly =
+          "CANCELLED".equals(request.status())
+              && request.bookingDate() == null
+              && request.notes() == null;
+
+      if (!isCustomerCancellationOnly) {
+        throw new ForbiddenException("Customers can only cancel their own bookings.");
+      }
+
+      return;
+    }
+
+    if (hasRole(userRoles, "SPECIALIST")) {
+      SpecialistResponse specialist = requireSpecialist(booking.getSpecialistId());
+      if (!specialist.email().equalsIgnoreCase(userEmail)) {
+        throw new ForbiddenException("You can only update your own or assigned bookings.");
+      }
+
+      return;
+    }
+
+    throw new ForbiddenException("You can only update your own or assigned bookings.");
+  }
+
+  private void validateBookingDeletionAccess(Booking booking, String userEmail, String userRoles) {
+    if (!hasRole(userRoles, "CUSTOMER")) {
+      throw new ForbiddenException("Only customers can delete their own pending bookings.");
+    }
+
+    String authenticatedCustomerId = resolveAuthenticatedCustomerId(userEmail, userRoles);
+    if (!booking.getCustomerId().equals(authenticatedCustomerId)) {
+      throw new ForbiddenException("Only customers can delete their own pending bookings.");
+    }
+
+    if (!"PENDING".equals(booking.getStatus())) {
+      throw new ForbiddenException("Only pending bookings can be deleted.");
+    }
+  }
+
   private String resolveAuthenticatedCustomerId(String userEmail, String userRoles) {
     return requireAuthenticatedCustomer(userEmail, userRoles).id();
+  }
+
+  private SpecialistResponse requireSpecialist(String specialistId) {
+    log.debug("Loading specialist: {}", specialistId);
+
+    try {
+      return requireResponseBody(
+          userServiceClient.getSpecialistById(specialistId), "specialist", specialistId);
+    } catch (FeignException.NotFound e) {
+      log.warn("Specialist not found: {}", specialistId);
+      throw ResourceNotFoundException.of("Specialist", specialistId);
+    } catch (FeignException e) {
+      log.error("Error loading specialist {}: {}", specialistId, e.getMessage());
+      throw new ServiceUnavailableException(
+          "Unable to validate specialist. Please try again later.");
+    }
   }
 
   private boolean hasRole(String userRoles, String expectedRole) {

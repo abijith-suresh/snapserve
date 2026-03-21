@@ -46,9 +46,11 @@ public class BookingController {
   })
   @GetMapping("/{id}")
   public ResponseEntity<ApiResponse<BookingResponse>> getBookingById(
-      @Parameter(description = "Booking ID", required = true) @PathVariable String id) {
+      @Parameter(description = "Booking ID", required = true) @PathVariable String id,
+      @RequestHeader("X-User-Email") String userEmail,
+      @RequestHeader("X-User-Roles") String userRoles) {
     log.info("GET /api/v1/bookings/{} - Fetching booking by id", id);
-    BookingResponse booking = bookingService.getBookingById(id);
+    BookingResponse booking = bookingService.getBookingById(id, userEmail, userRoles);
     log.info("Booking {} retrieved successfully", id);
     return ResponseEntity.ok(ApiResponse.ok("Booking retrieved successfully", booking));
   }
@@ -178,10 +180,12 @@ public class BookingController {
   @PatchMapping("/{id}")
   public ResponseEntity<ApiResponse<BookingResponse>> updateBooking(
       @Parameter(description = "Booking ID", required = true) @PathVariable String id,
+      @RequestHeader("X-User-Email") String userEmail,
+      @RequestHeader("X-User-Roles") String userRoles,
       @Parameter(description = "Update booking request", required = true) @Valid @RequestBody
           UpdateBookingRequest request) {
     log.info("PATCH /api/v1/bookings/{} - Updating booking", id);
-    BookingResponse booking = bookingService.updateBooking(id, request);
+    BookingResponse booking = bookingService.updateBooking(id, userEmail, userRoles, request);
     log.info("Booking {} updated successfully", id);
     return ResponseEntity.ok(ApiResponse.ok("Booking updated successfully", booking));
   }
@@ -198,10 +202,12 @@ public class BookingController {
   })
   @PostMapping("/{id}/cancel")
   public ResponseEntity<ApiResponse<BookingResponse>> cancelBooking(
-      @Parameter(description = "Booking ID", required = true) @PathVariable String id) {
+      @Parameter(description = "Booking ID", required = true) @PathVariable String id,
+      @RequestHeader("X-User-Email") String userEmail,
+      @RequestHeader("X-User-Roles") String userRoles) {
     log.info("POST /api/v1/bookings/{}/cancel - Cancelling booking", id);
     UpdateBookingRequest cancelRequest = new UpdateBookingRequest(null, "CANCELLED", null);
-    BookingResponse booking = bookingService.updateBooking(id, cancelRequest);
+    BookingResponse booking = bookingService.updateBooking(id, userEmail, userRoles, cancelRequest);
     log.info("Booking {} cancelled successfully", id);
     return ResponseEntity.ok(ApiResponse.ok("Booking cancelled successfully", booking));
   }
@@ -217,9 +223,11 @@ public class BookingController {
   })
   @DeleteMapping("/{id}")
   public ResponseEntity<ApiResponse<Void>> deleteBooking(
-      @Parameter(description = "Booking ID", required = true) @PathVariable String id) {
+      @Parameter(description = "Booking ID", required = true) @PathVariable String id,
+      @RequestHeader("X-User-Email") String userEmail,
+      @RequestHeader("X-User-Roles") String userRoles) {
     log.info("DELETE /api/v1/bookings/{} - Deleting booking", id);
-    bookingService.deleteBooking(id);
+    bookingService.deleteBooking(id, userEmail, userRoles);
     log.info("Booking {} deleted successfully", id);
     return ResponseEntity.status(HttpStatus.NO_CONTENT)
         .body(ApiResponse.ok("Booking deleted successfully"));
