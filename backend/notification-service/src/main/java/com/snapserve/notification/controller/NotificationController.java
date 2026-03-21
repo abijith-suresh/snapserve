@@ -1,5 +1,6 @@
 package com.snapserve.notification.controller;
 
+import com.snapserve.common.exception.ForbiddenException;
 import com.snapserve.common.mongo.ObjectIdParser;
 import com.snapserve.notification.model.NotificationHistory;
 import com.snapserve.notification.model.NotificationTemplate;
@@ -12,7 +13,9 @@ import com.snapserve.notificationclient.response.SendNotificationResponse;
 import com.snapserve.notificationclient.response.TemplateResponse;
 import jakarta.validation.Valid;
 import java.time.ZoneId;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
 import org.springframework.http.HttpStatus;
@@ -53,10 +56,14 @@ public class NotificationController {
 
   @GetMapping("/{notificationId}/status")
   public ResponseEntity<NotificationStatusResponse> getNotificationStatus(
-      @PathVariable String notificationId) {
+      @PathVariable String notificationId,
+      @org.springframework.web.bind.annotation.RequestHeader("X-User-Email") String userEmail,
+      @org.springframework.web.bind.annotation.RequestHeader("X-User-Roles") String userRoles) {
 
     NotificationHistory history =
         historyService.getHistory(ObjectIdParser.parse(notificationId, "notification"));
+
+    validateNotificationHistoryAccess(history, userEmail, userRoles);
 
     NotificationStatusResponse response =
         NotificationStatusResponse.builder()
@@ -64,7 +71,7 @@ public class NotificationController {
             .templateName(history.getTemplateName())
             .recipient(history.getRecipient())
             .channel(history.getChannel())
-            .status(history.getStatus())
+            .status(history.getStatus() != null ? history.getStatus().name() : null)
             .parameters(history.getParameters())
             .sentAt(
                 history.getSentAt() != null
@@ -82,7 +89,10 @@ public class NotificationController {
   }
 
   @GetMapping("/templates")
-  public ResponseEntity<List<TemplateResponse>> getTemplates() {
+  public ResponseEntity<List<TemplateResponse>> getTemplates(
+      @org.springframework.web.bind.annotation.RequestHeader("X-User-Email") String userEmail,
+      @org.springframework.web.bind.annotation.RequestHeader("X-User-Roles") String userRoles) {
+    validateTemplateManagementAccess(userRoles);
     List<NotificationTemplate> templates = templateService.getAllTemplates();
 
     List<TemplateResponse> response =
@@ -111,7 +121,11 @@ public class NotificationController {
   }
 
   @GetMapping("/templates/{name}")
-  public ResponseEntity<TemplateResponse> getTemplateByName(@PathVariable String name) {
+  public ResponseEntity<TemplateResponse> getTemplateByName(
+      @PathVariable String name,
+      @org.springframework.web.bind.annotation.RequestHeader("X-User-Email") String userEmail,
+      @org.springframework.web.bind.annotation.RequestHeader("X-User-Roles") String userRoles) {
+    validateTemplateManagementAccess(userRoles);
     NotificationTemplate template = templateService.getTemplateByName(name);
 
     TemplateResponse response =
@@ -137,7 +151,10 @@ public class NotificationController {
 
   @PostMapping("/templates")
   public ResponseEntity<TemplateResponse> createTemplate(
-      @RequestBody NotificationTemplate template) {
+      @RequestBody NotificationTemplate template,
+      @org.springframework.web.bind.annotation.RequestHeader("X-User-Email") String userEmail,
+      @org.springframework.web.bind.annotation.RequestHeader("X-User-Roles") String userRoles) {
+    validateTemplateManagementAccess(userRoles);
     NotificationTemplate created = templateService.createTemplate(template);
 
     TemplateResponse response =
@@ -163,7 +180,11 @@ public class NotificationController {
 
   @PutMapping("/templates/{name}")
   public ResponseEntity<TemplateResponse> updateTemplate(
-      @PathVariable String name, @RequestBody NotificationTemplate template) {
+      @PathVariable String name,
+      @RequestBody NotificationTemplate template,
+      @org.springframework.web.bind.annotation.RequestHeader("X-User-Email") String userEmail,
+      @org.springframework.web.bind.annotation.RequestHeader("X-User-Roles") String userRoles) {
+    validateTemplateManagementAccess(userRoles);
     NotificationTemplate updated = templateService.updateTemplate(name, template);
 
     TemplateResponse response =
@@ -188,8 +209,39 @@ public class NotificationController {
   }
 
   @DeleteMapping("/templates/{name}")
-  public ResponseEntity<Void> deleteTemplate(@PathVariable String name) {
+  public ResponseEntity<Void> deleteTemplate(
+      @PathVariable String name,
+      @org.springframework.web.bind.annotation.RequestHeader("X-User-Email") String userEmail,
+      @org.springframework.web.bind.annotation.RequestHeader("X-User-Roles") String userRoles) {
+    validateTemplateManagementAccess(userRoles);
     templateService.deleteTemplate(name);
     return ResponseEntity.noContent().build();
+  }
+
+  private void validateNotificationHistoryAccess(
+      NotificationHistory history, String userEmail, String userRoles) {
+    if (history.getRecipient() != null && history.getRecipient().equalsIgnoreCase(userEmail)) {
+      return;
+    }
+
+    throw new ForbiddenException("You can only access your own notification history.");
+  }
+
+  private void validateTemplateManagementAccess(String userRoles) {
+    if (!hasRole(userRoles, "SPECIALIST")) {
+      throw new ForbiddenException("Only specialists can manage notification templates.");
+    }
+  }
+
+  private boolean hasRole(String userRoles, String expectedRole) {
+    if (userRoles == null || userRoles.isBlank()) {
+      return false;
+    }
+
+    return Arrays.stream(userRoles.split(","))
+        .map(String::trim)
+        .filter(role -> !role.isEmpty())
+        .map(role -> role.toUpperCase(Locale.ROOT))
+        .anyMatch(expectedRole::equals);
   }
 }
