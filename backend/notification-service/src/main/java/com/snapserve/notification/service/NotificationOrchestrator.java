@@ -3,6 +3,7 @@ package com.snapserve.notification.service;
 import com.snapserve.notification.model.NotificationHistory;
 import com.snapserve.notification.model.NotificationTemplate;
 import com.snapserve.notification.strategy.EmailNotificationStrategy;
+import com.snapserve.notification.strategy.NotificationChannelFactory;
 import com.snapserve.notificationclient.constants.NotificationChannel;
 import com.snapserve.notificationclient.request.SendNotificationRequest;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ public class NotificationOrchestrator {
   private final NotificationHistoryService historyService;
   private final RetryService retryService;
   private final EmailNotificationStrategy emailStrategy;
+  private final NotificationChannelFactory channelFactory;
 
   @Transactional
   public ObjectId sendNotification(SendNotificationRequest request) {
@@ -47,12 +49,7 @@ public class NotificationOrchestrator {
       if (request.getChannel() == NotificationChannel.EMAIL) {
         sendEmail(request, template);
       } else {
-        // TODO: Implement SMS and Push using strategy pattern
-        // This is where we would use:
-        // var strategy = channelFactory.getStrategy(request.getChannel());
-        // strategy.send(request);
-        throw new UnsupportedOperationException(
-            "Channel " + request.getChannel() + " not yet implemented");
+        channelFactory.getStrategy(request.getChannel()).send(request);
       }
 
       // Mark as sent

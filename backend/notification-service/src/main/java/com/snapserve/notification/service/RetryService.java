@@ -5,6 +5,7 @@ import com.snapserve.notification.model.NotificationRetry;
 import com.snapserve.notification.repository.NotificationRetryRepository;
 import com.snapserve.notification.strategy.EmailNotificationStrategy;
 import com.snapserve.notification.strategy.NotificationChannelFactory;
+import com.snapserve.notificationclient.request.SendNotificationRequest;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -94,10 +95,15 @@ public class RetryService {
             template,
             history.getParameters());
       } else {
-        // For SMS and Push, use the strategy pattern
-        var strategy = channelFactory.getStrategy(history.getChannel());
-        // TODO: Implement proper request building for SMS/Push
-        log.warn("Retry for non-EMAIL channel not fully implemented");
+        channelFactory
+            .getStrategy(history.getChannel())
+            .send(
+                SendNotificationRequest.builder()
+                    .templateName(history.getTemplateName())
+                    .channel(history.getChannel())
+                    .recipient(history.getRecipient())
+                    .parameters(history.getParameters())
+                    .build());
       }
 
       // Success - mark as sent and delete retry record

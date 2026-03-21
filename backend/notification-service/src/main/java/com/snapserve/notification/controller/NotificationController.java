@@ -1,5 +1,6 @@
 package com.snapserve.notification.controller;
 
+import com.snapserve.common.mongo.ObjectIdParser;
 import com.snapserve.notification.model.NotificationHistory;
 import com.snapserve.notification.model.NotificationTemplate;
 import com.snapserve.notification.service.NotificationHistoryService;
@@ -54,7 +55,8 @@ public class NotificationController {
   public ResponseEntity<NotificationStatusResponse> getNotificationStatus(
       @PathVariable String notificationId) {
 
-    NotificationHistory history = historyService.getHistory(new ObjectId(notificationId));
+    NotificationHistory history =
+        historyService.getHistory(ObjectIdParser.parse(notificationId, "notification"));
 
     NotificationStatusResponse response =
         NotificationStatusResponse.builder()
