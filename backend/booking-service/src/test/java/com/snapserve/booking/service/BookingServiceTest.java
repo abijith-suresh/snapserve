@@ -12,8 +12,10 @@ import static org.mockito.Mockito.when;
 
 import com.snapserve.booking.dto.request.BookingRequest;
 import com.snapserve.booking.dto.request.UpdateBookingRequest;
+import com.snapserve.booking.dto.response.BookingListResponse;
 import com.snapserve.booking.dto.response.BookingResponse;
 import com.snapserve.booking.model.Booking;
+import com.snapserve.booking.model.BookingStatus;
 import com.snapserve.booking.repository.BookingRepository;
 import com.snapserve.booking.service.mapper.BookingMapper;
 import com.snapserve.common.exception.BadRequestException;
@@ -37,6 +39,7 @@ import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -128,7 +131,6 @@ class BookingServiceTest {
   void createBookingBindsAuthenticatedCustomerInsteadOfCallerSuppliedCustomerId() {
     BookingRequest request =
         new BookingRequest(
-            "spoofed-customer",
             "specialist-1",
             LocalDateTime.of(2026, 4, 1, 10, 0),
             "Fix kitchen sink",
@@ -163,7 +165,6 @@ class BookingServiceTest {
         .isEqualTo("customer-1");
     assertThat(response.customerId()).isEqualTo("customer-1");
     verify(userServiceClient).getCustomerByEmail("customer@snapserve.com");
-    verify(userServiceClient, never()).getCustomerById("spoofed-customer");
   }
 
   @Test
@@ -204,6 +205,133 @@ class BookingServiceTest {
 
     verify(userServiceClient).getCustomerByEmail("customer@snapserve.com");
     verify(bookingRepository, never()).findByCustomerId(eq("customer-2"), any());
+  }
+
+  @Test
+  void getBookingsByCustomerAndStatusParsesStatusEnumBeforeRepositoryQuery() {
+    PageRequest pageable = PageRequest.of(0, 20);
+    when(userServiceClient.getCustomerByEmail("customer@snapserve.com"))
+        .thenReturn(ApiResponse.ok(customerResponse()));
+    when(bookingRepository.findByCustomerIdAndStatus("customer-1", BookingStatus.PENDING, pageable))
+        .thenReturn(new PageImpl<>(List.of(bookingWithStatus("PENDING")), pageable, 1));
+
+    BookingListResponse response =
+        bookingService.getBookingsByCustomerAndStatus(
+            "customer-1", "pending", "customer@snapserve.com", "CUSTOMER", pageable);
+
+    assertThat(response.totalElements()).isEqualTo(1);
+    verify(bookingRepository)
+        .findByCustomerIdAndStatus("customer-1", BookingStatus.PENDING, pageable);
+  }
+
+  @Test
+  void getBookingsByCustomerAndStatusRejectsAccessToAnotherCustomersBookings() {
+    PageRequest pageable = PageRequest.of(0, 20);
+    when(userServiceClient.getCustomerByEmail("customer@snapserve.com"))
+        .thenReturn(ApiResponse.ok(customerResponse()));
+
+    assertThatThrownBy(
+            () ->
+                bookingService.getBookingsByCustomerAndStatus(
+                    "customer-2", "PENDING", "customer@snapserve.com", "CUSTOMER", pageable))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessage("You can only view your own bookings.");
+
+    verify(bookingRepository, never())
+        .findByCustomerIdAndStatus(eq("customer-2"), eq(BookingStatus.PENDING), any());
+  }
+
+  @Test
+  void getBookingsBySpecialistAllowsAssignedSpecialist() {
+    Booking booking = bookingWithStatus("PENDING");
+    PageRequest pageable = PageRequest.of(0, 20);
+
+    when(userServiceClient.getSpecialistById("specialist-1"))
+        .thenReturn(ApiResponse.ok(specialistResponse()));
+    when(bookingRepository.findBySpecialistId("specialist-1", pageable))
+        .thenReturn(new PageImpl<>(List.of(booking), pageable, 1));
+
+    BookingListResponse response =
+        bookingService.getBookingsBySpecialist(
+            "specialist-1", "morgan@example.com", "SPECIALIST", pageable);
+
+    assertThat(response.totalElements()).isEqualTo(1);
+    assertThat(response.content()).hasSize(1);
+  }
+
+  @Test
+  void getBookingsBySpecialistRejectsAccessToAnotherSpecialistsBookings() {
+    PageRequest pageable = PageRequest.of(0, 20);
+    when(userServiceClient.getSpecialistById("specialist-2"))
+        .thenReturn(
+            ApiResponse.ok(
+                new SpecialistResponse(
+                    "specialist-2",
+                    "other-specialist@example.com",
+                    "Other Specialist",
+                    "555-0102",
+                    "Electrician",
+                    List.of("Wiring"),
+                    BigDecimal.valueOf(89.99),
+                    true,
+                    null,
+                    null)));
+
+    assertThatThrownBy(
+            () ->
+                bookingService.getBookingsBySpecialist(
+                    "specialist-2", "morgan@example.com", "SPECIALIST", pageable))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessage("You can only view your own bookings.");
+
+    verify(bookingRepository, never()).findBySpecialistId(eq("specialist-2"), any());
+  }
+
+  @Test
+  void getBookingsBySpecialistAndStatusParsesStatusEnumBeforeRepositoryQuery() {
+    PageRequest pageable = PageRequest.of(0, 20);
+    when(userServiceClient.getSpecialistById("specialist-1"))
+        .thenReturn(ApiResponse.ok(specialistResponse()));
+    when(bookingRepository.findBySpecialistIdAndStatus(
+            "specialist-1", BookingStatus.PENDING, pageable))
+        .thenReturn(new PageImpl<>(List.of(bookingWithStatus("PENDING")), pageable, 1));
+
+    BookingListResponse response =
+        bookingService.getBookingsBySpecialistAndStatus(
+            "specialist-1", "pending", "morgan@example.com", "SPECIALIST", pageable);
+
+    assertThat(response.totalElements()).isEqualTo(1);
+    verify(bookingRepository)
+        .findBySpecialistIdAndStatus("specialist-1", BookingStatus.PENDING, pageable);
+  }
+
+  @Test
+  void getBookingsBySpecialistAndStatusRejectsAccessToAnotherSpecialistsBookings() {
+    PageRequest pageable = PageRequest.of(0, 20);
+    when(userServiceClient.getSpecialistById("specialist-2"))
+        .thenReturn(
+            ApiResponse.ok(
+                new SpecialistResponse(
+                    "specialist-2",
+                    "other-specialist@example.com",
+                    "Other Specialist",
+                    "555-0102",
+                    "Electrician",
+                    List.of("Wiring"),
+                    BigDecimal.valueOf(89.99),
+                    true,
+                    null,
+                    null)));
+
+    assertThatThrownBy(
+            () ->
+                bookingService.getBookingsBySpecialistAndStatus(
+                    "specialist-2", "pending", "morgan@example.com", "SPECIALIST", pageable))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessage("You can only view your own bookings.");
+
+    verify(bookingRepository, never())
+        .findBySpecialistIdAndStatus(eq("specialist-2"), eq(BookingStatus.PENDING), any());
   }
 
   @Test
@@ -605,13 +733,12 @@ class BookingServiceTest {
     ReflectionTestUtils.setField(booking, "customerId", customerId);
     ReflectionTestUtils.setField(booking, "specialistId", specialistId);
     ReflectionTestUtils.setField(booking, "bookingDate", LocalDateTime.of(2026, 4, 1, 10, 0));
-    ReflectionTestUtils.setField(booking, "status", status);
+    ReflectionTestUtils.setField(booking, "status", BookingStatus.valueOf(status));
     return booking;
   }
 
   private BookingRequest bookingRequest() {
     return new BookingRequest(
-        "customer-1",
         "specialist-1",
         LocalDateTime.of(2026, 4, 1, 10, 0),
         "Fix kitchen sink",
@@ -641,13 +768,13 @@ class BookingServiceTest {
   private Booking savedBooking(BookingRequest request) {
     Booking booking = new Booking();
     ReflectionTestUtils.setField(booking, "id", new ObjectId());
-    ReflectionTestUtils.setField(booking, "customerId", request.customerId());
+    ReflectionTestUtils.setField(booking, "customerId", "customer-1");
     ReflectionTestUtils.setField(booking, "specialistId", request.specialistId());
     ReflectionTestUtils.setField(booking, "bookingDate", request.bookingDate());
     ReflectionTestUtils.setField(booking, "notes", request.notes());
     ReflectionTestUtils.setField(booking, "price", request.price());
     ReflectionTestUtils.setField(booking, "serviceType", request.serviceType());
-    ReflectionTestUtils.setField(booking, "status", "PENDING");
+    ReflectionTestUtils.setField(booking, "status", BookingStatus.PENDING);
     return booking;
   }
 }

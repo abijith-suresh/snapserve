@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import com.snapserve.booking.dto.request.ReviewRequest;
 import com.snapserve.booking.dto.response.ReviewResponse;
 import com.snapserve.booking.model.Booking;
+import com.snapserve.booking.model.BookingStatus;
 import com.snapserve.booking.model.Review;
 import com.snapserve.booking.repository.BookingRepository;
 import com.snapserve.booking.repository.ReviewRepository;
@@ -61,7 +62,7 @@ class ReviewServiceTest {
     ReflectionTestUtils.setField(booking, "id", new ObjectId());
     ReflectionTestUtils.setField(booking, "customerId", "customer-1");
     ReflectionTestUtils.setField(booking, "specialistId", "specialist-1");
-    ReflectionTestUtils.setField(booking, "status", "CONFIRMED");
+    ReflectionTestUtils.setField(booking, "status", BookingStatus.CONFIRMED);
 
     ReviewRequest request =
         new ReviewRequest(
@@ -85,7 +86,7 @@ class ReviewServiceTest {
     ReflectionTestUtils.setField(booking, "id", new ObjectId());
     ReflectionTestUtils.setField(booking, "customerId", "customer-1");
     ReflectionTestUtils.setField(booking, "specialistId", "specialist-99");
-    ReflectionTestUtils.setField(booking, "status", "COMPLETED");
+    ReflectionTestUtils.setField(booking, "status", BookingStatus.COMPLETED);
 
     Review savedReview = new Review();
     ReflectionTestUtils.setField(savedReview, "id", new ObjectId());
@@ -123,7 +124,7 @@ class ReviewServiceTest {
     ReflectionTestUtils.setField(booking, "id", new ObjectId());
     ReflectionTestUtils.setField(booking, "customerId", "customer-2");
     ReflectionTestUtils.setField(booking, "specialistId", "specialist-1");
-    ReflectionTestUtils.setField(booking, "status", "COMPLETED");
+    ReflectionTestUtils.setField(booking, "status", BookingStatus.COMPLETED);
 
     ReviewRequest request =
         new ReviewRequest(

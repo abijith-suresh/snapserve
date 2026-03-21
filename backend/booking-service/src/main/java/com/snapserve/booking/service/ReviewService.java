@@ -5,6 +5,7 @@ import com.snapserve.booking.dto.response.ReviewListResponse;
 import com.snapserve.booking.dto.response.ReviewResponse;
 import com.snapserve.booking.dto.response.SpecialistReviewSummaryResponse;
 import com.snapserve.booking.model.Booking;
+import com.snapserve.booking.model.BookingStatus;
 import com.snapserve.booking.model.Review;
 import com.snapserve.booking.repository.BookingRepository;
 import com.snapserve.booking.repository.ReviewRepository;
@@ -152,7 +153,7 @@ public class ReviewService {
       throw new BadRequestException("You can only review bookings you have made.");
     }
 
-    if (!"COMPLETED".equals(booking.getStatus())) {
+    if (booking.getStatus() != BookingStatus.COMPLETED) {
       log.warn(
           "Customer {} attempted to review booking {} which is not completed. Status: {}",
           customerId,

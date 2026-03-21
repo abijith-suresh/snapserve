@@ -1,6 +1,7 @@
 package com.snapserve.booking.repository;
 
 import com.snapserve.booking.model.Booking;
+import com.snapserve.booking.model.BookingStatus;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.bson.types.ObjectId;
@@ -17,9 +18,11 @@ public interface BookingRepository extends MongoRepository<Booking, ObjectId> {
 
   Page<Booking> findBySpecialistId(String specialistId, Pageable pageable);
 
-  Page<Booking> findByCustomerIdAndStatus(String customerId, String status, Pageable pageable);
+  Page<Booking> findByCustomerIdAndStatus(
+      String customerId, BookingStatus status, Pageable pageable);
 
-  Page<Booking> findBySpecialistIdAndStatus(String specialistId, String status, Pageable pageable);
+  Page<Booking> findBySpecialistIdAndStatus(
+      String specialistId, BookingStatus status, Pageable pageable);
 
   List<Booking> findByBookingDateBetween(LocalDateTime start, LocalDateTime end);
 

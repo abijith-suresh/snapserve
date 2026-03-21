@@ -1,5 +1,6 @@
 package com.snapserve.booking.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
@@ -8,8 +9,8 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+@JsonIgnoreProperties(value = {"customerId"})
 public record BookingRequest(
-    @NotBlank(message = "Customer ID is required") String customerId,
     @NotBlank(message = "Specialist ID is required") String specialistId,
     @NotNull(message = "Booking date is required")
         @Future(message = "Booking date must be in the future")

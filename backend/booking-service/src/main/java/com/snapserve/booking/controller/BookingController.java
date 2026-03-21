@@ -115,11 +115,14 @@ public class BookingController {
   @GetMapping("/specialist/{specialistId}")
   public ResponseEntity<ApiResponse<BookingListResponse>> getBookingsBySpecialist(
       @Parameter(description = "Specialist ID", required = true) @PathVariable String specialistId,
+      @RequestHeader("X-User-Email") String userEmail,
+      @RequestHeader("X-User-Roles") String userRoles,
       @ParameterObject
           @PageableDefault(size = 20, sort = "bookingDate", direction = Sort.Direction.DESC)
           Pageable pageable) {
     log.info("GET /api/v1/bookings/specialist/{} - Fetching bookings for specialist", specialistId);
-    BookingListResponse bookings = bookingService.getBookingsBySpecialist(specialistId, pageable);
+    BookingListResponse bookings =
+        bookingService.getBookingsBySpecialist(specialistId, userEmail, userRoles, pageable);
     log.info("Retrieved {} bookings for specialist {}", bookings.totalElements(), specialistId);
     return ResponseEntity.ok(
         ApiResponse.ok("Specialist bookings retrieved successfully", bookings));

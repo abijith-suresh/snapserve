@@ -2,6 +2,7 @@ package com.snapserve.booking.controller;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -10,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.snapserve.booking.dto.request.BookingRequest;
 import com.snapserve.booking.dto.request.UpdateBookingRequest;
+import com.snapserve.booking.dto.response.BookingListResponse;
 import com.snapserve.booking.dto.response.BookingResponse;
 import com.snapserve.booking.service.BookingService;
 import java.lang.reflect.Constructor;
@@ -22,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -39,7 +42,10 @@ class BookingControllerTest {
         BookingController.class.getDeclaredConstructor(BookingService.class);
     constructor.setAccessible(true);
     BookingController controller = constructor.newInstance(bookingService);
-    mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+    mockMvc =
+        MockMvcBuilders.standaloneSetup(controller)
+            .setCustomArgumentResolvers(new PageableHandlerMethodArgumentResolver())
+            .build();
   }
 
   @Test
@@ -65,7 +71,6 @@ class BookingControllerTest {
                 eq("CUSTOMER"),
                 eq(
                     new BookingRequest(
-                        "spoofed-customer",
                         "specialist-1",
                         bookingDate,
                         "Fix kitchen sink",
@@ -90,12 +95,25 @@ class BookingControllerTest {
             "customer@snapserve.com",
             "CUSTOMER",
             new BookingRequest(
-                "spoofed-customer",
                 "specialist-1",
                 bookingDate,
                 "Fix kitchen sink",
                 BigDecimal.valueOf(149.99),
                 "Plumbing"));
+  }
+
+  @Test
+  void updateBookingRejectsEmptyPatchRequest() throws Exception {
+    mockMvc
+        .perform(
+            patch("/api/v1/bookings/{id}", new ObjectId().toString())
+                .header("X-User-Email", "customer@snapserve.com")
+                .header("X-User-Roles", "CUSTOMER")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(bookingService);
   }
 
   @Test
@@ -128,6 +146,31 @@ class BookingControllerTest {
         .andExpect(status().isOk());
 
     verify(bookingService).getBookingById(bookingId, "customer@snapserve.com", "CUSTOMER");
+  }
+
+  @Test
+  void getBookingsBySpecialistUsesTrustedUserContextHeaders() throws Exception {
+    org.mockito.Mockito.when(
+            bookingService.getBookingsBySpecialist(
+                eq("specialist-1"),
+                eq("morgan@example.com"),
+                eq("SPECIALIST"),
+                org.mockito.ArgumentMatchers.any()))
+        .thenReturn(new BookingListResponse(java.util.List.of(), 0, 20, 0, 0, true, true));
+
+    mockMvc
+        .perform(
+            get("/api/v1/bookings/specialist/{specialistId}", "specialist-1")
+                .header("X-User-Email", "morgan@example.com")
+                .header("X-User-Roles", "SPECIALIST"))
+        .andExpect(status().isOk());
+
+    verify(bookingService)
+        .getBookingsBySpecialist(
+            eq("specialist-1"),
+            eq("morgan@example.com"),
+            eq("SPECIALIST"),
+            org.mockito.ArgumentMatchers.any());
   }
 
   @Test
