@@ -33,6 +33,9 @@ public class AccountService {
   @Value("${account.lockout.max-attempts:5}")
   private int maxLoginAttempts;
 
+  @Value("${account.lockout.lock-duration-minutes:15}")
+  private long lockDurationMinutes;
+
   public void register(RegisterRequest request) {
     if (accountRepo.findByEmail(request.getEmail()).isPresent()) {
       throw new ConflictException("Account with email " + request.getEmail() + " already exists");
@@ -51,6 +54,8 @@ public class AccountService {
     }
 
     Account account = accountOpt.get();
+
+    unlockIfCooldownExpired(account);
 
     if (account.isLocked()) {
       log.warn("Locked account login attempt: {}", request.getEmail());
@@ -85,6 +90,8 @@ public class AccountService {
   public AuthResponse refreshAccessToken(
       RefreshTokenRequest request, String deviceId, String ipAddress) {
     Account account = refreshTokenService.getAccountFromRefreshToken(request.getRefreshToken());
+
+    unlockIfCooldownExpired(account);
 
     if (!account.isEnabled() || account.isLocked()) {
       throw new BadRequestException("Account is disabled or locked");
@@ -149,8 +156,23 @@ public class AccountService {
   private void resetFailedLoginAttempts(Account account) {
     if (account.getFailedLoginAttempts() > 0) {
       account.setFailedLoginAttempts(0);
+      account.setLocked(false);
       account.setLastFailedLoginAt(null);
       accountRepo.save(account);
     }
+  }
+
+  private void unlockIfCooldownExpired(Account account) {
+    if (!account.isLocked() || account.getLastFailedLoginAt() == null) {
+      return;
+    }
+
+    Instant unlockAt = account.getLastFailedLoginAt().plusSeconds(lockDurationMinutes * 60);
+    if (Instant.now().isBefore(unlockAt)) {
+      return;
+    }
+
+    resetFailedLoginAttempts(account);
+    log.info("Account unlocked after lockout cooldown: {}", account.getEmail());
   }
 }
