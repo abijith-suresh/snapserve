@@ -19,5 +19,9 @@ public class RegisterRequest {
   private String password;
 
   @NotBlank(message = "Role is required")
+  @Pattern(
+      regexp = "CUSTOMER|SPECIALIST",
+      flags = Pattern.Flag.CASE_INSENSITIVE,
+      message = "Role must be one of: CUSTOMER, SPECIALIST")
   private String role;
 }

@@ -122,19 +122,11 @@ public class AccountService {
     Account account = new Account();
     account.setEmail(request.getEmail());
     account.setPassword(passwordEncoder.encode(request.getPassword()));
-    account.setRole(mapRole(request.getRole()));
+    account.setRole(Role.from(request.getRole()));
     account.setEnabled(true);
     account.setLocked(false);
     account.setFailedLoginAttempts(0);
     return account;
-  }
-
-  private Role mapRole(String roleStr) {
-    try {
-      return Role.valueOf(roleStr.toUpperCase());
-    } catch (IllegalArgumentException e) {
-      return Role.CUSTOMER;
-    }
   }
 
   private void handleFailedLogin(Account account) {

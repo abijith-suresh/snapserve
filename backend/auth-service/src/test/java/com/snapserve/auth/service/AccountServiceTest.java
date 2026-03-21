@@ -11,9 +11,11 @@ import static org.mockito.Mockito.when;
 import com.snapserve.auth.config.JwtTokenProvider;
 import com.snapserve.auth.dto.AuthResponse;
 import com.snapserve.auth.dto.LoginRequest;
+import com.snapserve.auth.dto.RegisterRequest;
 import com.snapserve.auth.model.Account;
 import com.snapserve.auth.repo.AccountRepo;
 import com.snapserve.common.exception.AccountLockedException;
+import com.snapserve.common.exception.BadRequestException;
 import com.snapserve.common.model.Role;
 import java.time.Duration;
 import java.time.Instant;
@@ -84,6 +86,23 @@ class AccountServiceTest {
     assertThat(response.getAccessToken()).isEqualTo("access-token");
     assertThat(response.getRefreshToken()).isEqualTo("refresh-token");
     assertThat(response.getExpiresIn()).isEqualTo(3600L);
+  }
+
+  @Test
+  void registerRejectsUnsupportedRoleInsteadOfDefaultingToCustomer() {
+    RegisterRequest request = new RegisterRequest();
+    request.setEmail("new@snapserve.com");
+    request.setPassword("Password1!");
+    request.setRole("ADMIN");
+
+    when(accountRepo.findByEmail("new@snapserve.com")).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> accountService.register(request))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessage("Role must be one of: CUSTOMER, SPECIALIST.");
+
+    verify(accountRepo, never()).save(any(Account.class));
+    verifyNoInteractions(jwtTokenProvider, refreshTokenService);
   }
 
   private static LoginRequest loginRequest(String email, String password) {
