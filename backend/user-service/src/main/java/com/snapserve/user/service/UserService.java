@@ -1,6 +1,7 @@
 package com.snapserve.user.service;
 
 import com.snapserve.common.exception.ConflictException;
+import com.snapserve.common.exception.ForbiddenException;
 import com.snapserve.common.exception.ResourceNotFoundException;
 import com.snapserve.common.model.Role;
 import com.snapserve.common.mongo.ObjectIdParser;
@@ -13,7 +14,9 @@ import com.snapserve.userclient.dto.customer.CustomerResponse;
 import com.snapserve.userclient.dto.specialist.SpecialistListResponse;
 import com.snapserve.userclient.dto.specialist.SpecialistRequest;
 import com.snapserve.userclient.dto.specialist.SpecialistResponse;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
@@ -127,12 +130,20 @@ public class UserService {
     return toSpecialistListResponse(specialistPage);
   }
 
-  public CustomerResponse updateCustomer(String id, CustomerRequest request) {
+  public CustomerResponse updateCustomer(
+      String id, String authenticatedEmail, String authenticatedRoles, CustomerRequest request) {
     ObjectId objectId = parseObjectId(id, "customer");
     UserEntity customer =
         userRepository
             .findByIdAndRole(objectId, Role.CUSTOMER)
             .orElseThrow(() -> ResourceNotFoundException.of("Customer", id));
+
+    validateCustomerOwnership(customer, authenticatedEmail, authenticatedRoles);
+
+    if (!request.email().equalsIgnoreCase(authenticatedEmail)) {
+      throw new com.snapserve.common.exception.BadRequestException(
+          "Customer email must match the authenticated user.");
+    }
 
     if (!customer.getEmail().equals(request.email())
         && userRepository.existsByEmail(request.email())) {
@@ -150,12 +161,20 @@ public class UserService {
     return userMapper.toCustomerResponse(customer);
   }
 
-  public SpecialistResponse updateSpecialist(String id, SpecialistRequest request) {
+  public SpecialistResponse updateSpecialist(
+      String id, String authenticatedEmail, String authenticatedRoles, SpecialistRequest request) {
     ObjectId objectId = parseObjectId(id, "specialist");
     UserEntity specialist =
         userRepository
             .findByIdAndRole(objectId, Role.SPECIALIST)
             .orElseThrow(() -> ResourceNotFoundException.of("Specialist", id));
+
+    validateSpecialistOwnership(specialist, authenticatedEmail, authenticatedRoles);
+
+    if (!request.email().equalsIgnoreCase(authenticatedEmail)) {
+      throw new com.snapserve.common.exception.BadRequestException(
+          "Specialist email must match the authenticated user.");
+    }
 
     if (!specialist.getEmail().equals(request.email())
         && userRepository.existsByEmail(request.email())) {
@@ -220,5 +239,39 @@ public class UserService {
 
   private ObjectId parseObjectId(String id, String resourceName) {
     return ObjectIdParser.parse(id, resourceName);
+  }
+
+  private void validateCustomerOwnership(
+      UserEntity customer, String authenticatedEmail, String authenticatedRoles) {
+    if (!hasRole(authenticatedRoles, Role.CUSTOMER)) {
+      throw new ForbiddenException("Only customers can update customer profiles.");
+    }
+
+    if (!customer.getEmail().equalsIgnoreCase(authenticatedEmail)) {
+      throw new ForbiddenException("You can only update your own customer profile.");
+    }
+  }
+
+  private void validateSpecialistOwnership(
+      UserEntity specialist, String authenticatedEmail, String authenticatedRoles) {
+    if (!hasRole(authenticatedRoles, Role.SPECIALIST)) {
+      throw new ForbiddenException("Only specialists can update specialist profiles.");
+    }
+
+    if (!specialist.getEmail().equalsIgnoreCase(authenticatedEmail)) {
+      throw new ForbiddenException("You can only update your own specialist profile.");
+    }
+  }
+
+  private boolean hasRole(String authenticatedRoles, Role expectedRole) {
+    if (authenticatedRoles == null || authenticatedRoles.isBlank()) {
+      return false;
+    }
+
+    return Arrays.stream(authenticatedRoles.split(","))
+        .map(String::trim)
+        .filter(role -> !role.isEmpty())
+        .map(role -> role.toUpperCase(Locale.ROOT))
+        .anyMatch(expectedRole.name()::equals);
   }
 }

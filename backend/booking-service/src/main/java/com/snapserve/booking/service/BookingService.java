@@ -8,6 +8,7 @@ import com.snapserve.booking.model.Booking;
 import com.snapserve.booking.repository.BookingRepository;
 import com.snapserve.booking.service.mapper.BookingMapper;
 import com.snapserve.common.exception.ConflictException;
+import com.snapserve.common.exception.ForbiddenException;
 import com.snapserve.common.exception.ResourceNotFoundException;
 import com.snapserve.common.exception.ServiceUnavailableException;
 import com.snapserve.common.mongo.ObjectIdParser;
@@ -16,7 +17,9 @@ import com.snapserve.userclient.dto.customer.CustomerResponse;
 import feign.FeignException;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -50,10 +53,14 @@ public class BookingService {
   }
 
   @Transactional(readOnly = true)
-  public BookingListResponse getBookingsByCustomer(String customerId, Pageable pageable) {
+  public BookingListResponse getBookingsByCustomer(
+      String customerId, String userEmail, String userRoles, Pageable pageable) {
     log.info("Fetching bookings for customer: {} with pagination: {}", customerId, pageable);
 
-    validateCustomerExists(customerId);
+    String authenticatedCustomerId = resolveAuthenticatedCustomerId(userEmail, userRoles);
+    if (!authenticatedCustomerId.equals(customerId)) {
+      throw new ForbiddenException("You can only view your own bookings.");
+    }
 
     Page<Booking> bookingPage = bookingRepository.findByCustomerId(customerId, pageable);
 
@@ -128,17 +135,18 @@ public class BookingService {
   }
 
   @Transactional
-  public BookingResponse createBooking(BookingRequest request) {
+  public BookingResponse createBooking(String userEmail, String userRoles, BookingRequest request) {
     log.info(
-        "Creating booking for customer: {} with specialist: {}",
-        request.customerId(),
+        "Creating booking for authenticated user: {} with specialist: {}",
+        userEmail,
         request.specialistId());
 
-    CustomerResponse customer = requireCustomer(request.customerId());
+    CustomerResponse customer = requireAuthenticatedCustomer(userEmail, userRoles);
     validateSpecialistExists(request.specialistId());
     checkForBookingConflicts(request.specialistId(), request.bookingDate());
 
     Booking booking = bookingMapper.toEntity(request);
+    booking.setCustomerId(customer.id());
     booking.setStatus("PENDING");
 
     Booking savedBooking = bookingRepository.save(booking);
@@ -171,7 +179,8 @@ public class BookingService {
       checkForBookingConflicts(booking.getSpecialistId(), request.bookingDate(), id);
     }
 
-    validateStatusTransition(booking.getStatus(), request.status());
+    String previousStatus = booking.getStatus();
+    validateStatusTransition(previousStatus, request.status());
 
     bookingMapper.updateEntityFromRequest(request, booking);
 
@@ -179,8 +188,7 @@ public class BookingService {
 
     log.info("Booking updated successfully with id: {}", id);
 
-    // TODO: Publish async event for notification-service to send update email
-    // eventPublisher.publishEvent(new BookingUpdatedEvent(updatedBooking));
+    dispatchStatusChangeNotification(previousStatus, request.status(), updatedBooking);
 
     return bookingMapper.toResponse(updatedBooking);
   }
@@ -224,6 +232,26 @@ public class BookingService {
     } catch (FeignException e) {
       log.error("Error validating customer {}: {}", customerId, e.getMessage());
       throw new ServiceUnavailableException("Unable to validate customer. Please try again later.");
+    }
+  }
+
+  @Transactional(readOnly = true)
+  public CustomerResponse requireAuthenticatedCustomer(String userEmail, String userRoles) {
+    if (!hasRole(userRoles, "CUSTOMER")) {
+      throw new ForbiddenException("Only customers can create bookings.");
+    }
+
+    try {
+      return requireResponseBody(
+          userServiceClient.getCustomerByEmail(userEmail), "authenticated customer", userEmail);
+    } catch (FeignException.NotFound e) {
+      log.warn("Authenticated customer not found for email: {}", userEmail);
+      throw new ResourceNotFoundException(
+          "Authenticated customer not found for email: " + userEmail);
+    } catch (FeignException e) {
+      log.error("Error resolving authenticated customer {}: {}", userEmail, e.getMessage());
+      throw new ServiceUnavailableException(
+          "Unable to resolve authenticated customer. Please try again later.");
     }
   }
 
@@ -299,6 +327,35 @@ public class BookingService {
     }
   }
 
+  private void dispatchStatusChangeNotification(
+      String previousStatus, String requestedStatus, Booking updatedBooking) {
+    String updatedStatus = updatedBooking.getStatus();
+    if (updatedStatus == null || updatedStatus.equals(previousStatus)) {
+      return;
+    }
+
+    if (!"CANCELLED".equals(updatedStatus) && !"COMPLETED".equals(updatedStatus)) {
+      return;
+    }
+
+    try {
+      CustomerResponse customer = requireCustomer(updatedBooking.getCustomerId());
+
+      if ("CANCELLED".equals(updatedStatus)) {
+        bookingNotificationDispatcher.sendBookingCancelledNotification(updatedBooking, customer);
+      } else {
+        bookingNotificationDispatcher.sendBookingCompletedNotification(updatedBooking, customer);
+      }
+    } catch (RuntimeException ex) {
+      log.error(
+          "Booking {} status changed to {} but notification failed: {}",
+          updatedBooking.getId(),
+          updatedStatus,
+          ex.getMessage(),
+          ex);
+    }
+  }
+
   private BookingListResponse toBookingListResponse(Page<Booking> page) {
     return new BookingListResponse(
         bookingMapper.toResponseList(page.getContent()),
@@ -312,6 +369,22 @@ public class BookingService {
 
   private ObjectId parseObjectId(String id, String resourceName) {
     return ObjectIdParser.parse(id, resourceName);
+  }
+
+  private String resolveAuthenticatedCustomerId(String userEmail, String userRoles) {
+    return requireAuthenticatedCustomer(userEmail, userRoles).id();
+  }
+
+  private boolean hasRole(String userRoles, String expectedRole) {
+    if (userRoles == null || userRoles.isBlank()) {
+      return false;
+    }
+
+    return Arrays.stream(userRoles.split(","))
+        .map(String::trim)
+        .filter(role -> !role.isEmpty())
+        .map(role -> role.toUpperCase(Locale.ROOT))
+        .anyMatch(expectedRole::equals);
   }
 
   private <T> T requireResponseBody(

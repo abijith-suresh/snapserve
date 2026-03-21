@@ -86,11 +86,14 @@ public class BookingController {
   @GetMapping("/customer/{customerId}")
   public ResponseEntity<ApiResponse<BookingListResponse>> getBookingsByCustomer(
       @Parameter(description = "Customer ID", required = true) @PathVariable String customerId,
+      @RequestHeader("X-User-Email") String userEmail,
+      @RequestHeader("X-User-Roles") String userRoles,
       @ParameterObject
           @PageableDefault(size = 20, sort = "bookingDate", direction = Sort.Direction.DESC)
           Pageable pageable) {
     log.info("GET /api/v1/bookings/customer/{} - Fetching bookings for customer", customerId);
-    BookingListResponse bookings = bookingService.getBookingsByCustomer(customerId, pageable);
+    BookingListResponse bookings =
+        bookingService.getBookingsByCustomer(customerId, userEmail, userRoles, pageable);
     log.info("Retrieved {} bookings for customer {}", bookings.totalElements(), customerId);
     return ResponseEntity.ok(ApiResponse.ok("Customer bookings retrieved successfully", bookings));
   }
@@ -138,13 +141,19 @@ public class BookingController {
   })
   @PostMapping("/")
   public ResponseEntity<ApiResponse<BookingResponse>> createBooking(
+      @Parameter(description = "Authenticated customer email", required = true)
+          @RequestHeader("X-User-Email")
+          String userEmail,
+      @Parameter(description = "Authenticated user roles", required = true)
+          @RequestHeader("X-User-Roles")
+          String userRoles,
       @Parameter(description = "Booking request", required = true) @Valid @RequestBody
           BookingRequest request) {
     log.info(
-        "POST /api/v1/bookings/ - Creating booking for customer: {} with specialist: {}",
-        request.customerId(),
+        "POST /api/v1/bookings/ - Creating booking for authenticated user: {} with specialist: {}",
+        userEmail,
         request.specialistId());
-    BookingResponse booking = bookingService.createBooking(request);
+    BookingResponse booking = bookingService.createBooking(userEmail, userRoles, request);
     log.info("Booking created successfully with id: {}", booking.id());
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(ApiResponse.ok("Booking created successfully", booking));

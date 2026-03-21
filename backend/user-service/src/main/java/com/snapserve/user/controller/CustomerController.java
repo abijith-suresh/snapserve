@@ -92,8 +92,10 @@ public class CustomerController {
   @Operation(summary = "Update customer", description = "Update an existing customer")
   public ResponseEntity<ApiResponse<CustomerResponse>> updateCustomer(
       @Parameter(description = "Customer ID") @PathVariable String id,
+      @RequestHeader("X-User-Email") String userEmail,
+      @RequestHeader("X-User-Roles") String userRoles,
       @Valid @RequestBody CustomerRequest request) {
-    CustomerResponse response = userService.updateCustomer(id, request);
+    CustomerResponse response = userService.updateCustomer(id, userEmail, userRoles, request);
     log.info("Customer updated via API: {}", request.email());
     return ResponseEntity.ok(ApiResponse.ok("Customer updated successfully", response));
   }

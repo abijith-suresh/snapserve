@@ -3,12 +3,13 @@ package com.snapserve.user.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.snapserve.common.exception.BadRequestException;
-import com.snapserve.common.exception.ConflictException;
+import com.snapserve.common.exception.ForbiddenException;
 import com.snapserve.common.model.Role;
 import com.snapserve.user.mapper.UserMapper;
 import com.snapserve.user.model.UserEntity;
@@ -105,7 +106,7 @@ class UserServiceTest {
   }
 
   @Test
-  void updateCustomerRejectsChangingEmailToExistingUser() {
+  void updateCustomerRejectsChangingEmailEvenBeforeUniquenessCheck() {
     String customerId = new ObjectId().toString();
     CustomerRequest request =
         new CustomerRequest(
@@ -117,11 +118,143 @@ class UserServiceTest {
 
     when(userRepository.findByIdAndRole(new ObjectId(customerId), Role.CUSTOMER))
         .thenReturn(java.util.Optional.of(existingCustomer));
-    when(userRepository.existsByEmail(request.email())).thenReturn(true);
 
-    assertThatThrownBy(() -> userService.updateCustomer(customerId, request))
-        .isInstanceOf(ConflictException.class)
-        .hasMessage("User with email new@example.com already exists");
+    assertThatThrownBy(
+            () ->
+                userService.updateCustomer(customerId, "current@example.com", "CUSTOMER", request))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessage("Customer email must match the authenticated user.");
+
+    verify(userRepository, never()).existsByEmail(request.email());
+  }
+
+  @Test
+  void updateCustomerRejectsUpdatingAnotherCustomersProfile() {
+    String customerId = new ObjectId().toString();
+    CustomerRequest request =
+        new CustomerRequest(
+            "current@example.com", "Jamie Customer", "+15555550101", "123 Main St", "PAYPAL");
+    UserEntity existingCustomer = new UserEntity();
+    ReflectionTestUtils.setField(existingCustomer, "id", new ObjectId(customerId));
+    ReflectionTestUtils.setField(existingCustomer, "email", "current@example.com");
+    ReflectionTestUtils.setField(existingCustomer, "role", Role.CUSTOMER);
+
+    when(userRepository.findByIdAndRole(new ObjectId(customerId), Role.CUSTOMER))
+        .thenReturn(java.util.Optional.of(existingCustomer));
+
+    assertThatThrownBy(
+            () -> userService.updateCustomer(customerId, "other@example.com", "CUSTOMER", request))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessage("You can only update your own customer profile.");
+
+    verify(userRepository, never()).save(any(UserEntity.class));
+  }
+
+  @Test
+  void updateCustomerRejectsRoleNamesThatOnlyContainCustomerAsSubstring() {
+    String customerId = new ObjectId().toString();
+    CustomerRequest request =
+        new CustomerRequest(
+            "current@example.com", "Jamie Customer", "+15555550101", "123 Main St", "PAYPAL");
+    UserEntity existingCustomer = new UserEntity();
+    ReflectionTestUtils.setField(existingCustomer, "id", new ObjectId(customerId));
+    ReflectionTestUtils.setField(existingCustomer, "email", "current@example.com");
+    ReflectionTestUtils.setField(existingCustomer, "role", Role.CUSTOMER);
+
+    when(userRepository.findByIdAndRole(new ObjectId(customerId), Role.CUSTOMER))
+        .thenReturn(java.util.Optional.of(existingCustomer));
+
+    assertThatThrownBy(
+            () ->
+                userService.updateCustomer(
+                    customerId, "current@example.com", "SUPERCUSTOMER", request))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessage("Only customers can update customer profiles.");
+
+    verify(userRepository, never()).save(any(UserEntity.class));
+  }
+
+  @Test
+  void updateCustomerRejectsEmailDriftFromAuthenticatedIdentity() {
+    String customerId = new ObjectId().toString();
+    CustomerRequest request =
+        new CustomerRequest(
+            "new@example.com", "Jamie Customer", "+15555550101", "123 Main St", "PAYPAL");
+    UserEntity existingCustomer = new UserEntity();
+    ReflectionTestUtils.setField(existingCustomer, "id", new ObjectId(customerId));
+    ReflectionTestUtils.setField(existingCustomer, "email", "current@example.com");
+    ReflectionTestUtils.setField(existingCustomer, "role", Role.CUSTOMER);
+
+    when(userRepository.findByIdAndRole(new ObjectId(customerId), Role.CUSTOMER))
+        .thenReturn(java.util.Optional.of(existingCustomer));
+
+    assertThatThrownBy(
+            () ->
+                userService.updateCustomer(customerId, "current@example.com", "CUSTOMER", request))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessage("Customer email must match the authenticated user.");
+
+    verify(userRepository, never()).existsByEmail(request.email());
+    verify(userRepository, never()).save(any(UserEntity.class));
+  }
+
+  @Test
+  void updateSpecialistRejectsEmailDriftFromAuthenticatedIdentity() {
+    String specialistId = new ObjectId().toString();
+    SpecialistRequest request =
+        new SpecialistRequest(
+            "new@example.com",
+            "Morgan Specialist",
+            "+15555550102",
+            "Electrician",
+            List.of("wiring", "inspection"),
+            new BigDecimal("90.00"));
+    UserEntity existingSpecialist = new UserEntity();
+    ReflectionTestUtils.setField(existingSpecialist, "id", new ObjectId(specialistId));
+    ReflectionTestUtils.setField(existingSpecialist, "email", "current@example.com");
+    ReflectionTestUtils.setField(existingSpecialist, "role", Role.SPECIALIST);
+
+    when(userRepository.findByIdAndRole(new ObjectId(specialistId), Role.SPECIALIST))
+        .thenReturn(java.util.Optional.of(existingSpecialist));
+
+    assertThatThrownBy(
+            () ->
+                userService.updateSpecialist(
+                    specialistId, "current@example.com", "SPECIALIST", request))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessage("Specialist email must match the authenticated user.");
+
+    verify(userRepository, never()).existsByEmail(request.email());
+    verify(userRepository, never()).save(any(UserEntity.class));
+  }
+
+  @Test
+  void updateSpecialistRejectsRoleNamesThatOnlyContainSpecialistAsSubstring() {
+    String specialistId = new ObjectId().toString();
+    SpecialistRequest request =
+        new SpecialistRequest(
+            "current@example.com",
+            "Morgan Specialist",
+            "+15555550102",
+            "Electrician",
+            List.of("wiring", "inspection"),
+            new BigDecimal("90.00"));
+    UserEntity existingSpecialist = new UserEntity();
+    ReflectionTestUtils.setField(existingSpecialist, "id", new ObjectId(specialistId));
+    ReflectionTestUtils.setField(existingSpecialist, "email", "current@example.com");
+    ReflectionTestUtils.setField(existingSpecialist, "role", Role.SPECIALIST);
+
+    when(userRepository.findByIdAndRole(new ObjectId(specialistId), Role.SPECIALIST))
+        .thenReturn(java.util.Optional.of(existingSpecialist));
+
+    assertThatThrownBy(
+            () ->
+                userService.updateSpecialist(
+                    specialistId, "current@example.com", "SENIOR_SPECIALIST_ASSISTANT", request))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessage("Only specialists can update specialist profiles.");
+
+    verify(userRepository, never()).save(any(UserEntity.class));
   }
 
   @Test
@@ -156,7 +289,10 @@ class UserServiceTest {
         new CustomerRequest(
             "customer@example.com", "Jamie Customer", "+15555550101", "123 Main St", "PAYPAL");
 
-    assertThatThrownBy(() -> userService.updateCustomer("not-an-object-id", request))
+    assertThatThrownBy(
+            () ->
+                userService.updateCustomer(
+                    "not-an-object-id", "customer@example.com", "CUSTOMER", request))
         .isInstanceOf(BadRequestException.class)
         .hasMessage("Invalid customer ID format.");
 

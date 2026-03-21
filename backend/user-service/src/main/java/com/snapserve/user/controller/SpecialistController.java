@@ -115,8 +115,10 @@ public class SpecialistController {
   @Operation(summary = "Update specialist", description = "Update an existing specialist")
   public ResponseEntity<ApiResponse<SpecialistResponse>> updateSpecialist(
       @Parameter(description = "Specialist ID") @PathVariable String id,
+      @RequestHeader("X-User-Email") String userEmail,
+      @RequestHeader("X-User-Roles") String userRoles,
       @Valid @RequestBody SpecialistRequest request) {
-    SpecialistResponse response = userService.updateSpecialist(id, request);
+    SpecialistResponse response = userService.updateSpecialist(id, userEmail, userRoles, request);
     log.info("Specialist updated via API: {}", request.email());
     return ResponseEntity.ok(ApiResponse.ok("Specialist updated successfully", response));
   }

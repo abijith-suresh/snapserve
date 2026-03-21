@@ -3,6 +3,7 @@ package com.snapserve.booking.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -16,6 +17,8 @@ import com.snapserve.booking.model.Booking;
 import com.snapserve.booking.repository.BookingRepository;
 import com.snapserve.booking.service.mapper.BookingMapper;
 import com.snapserve.common.exception.BadRequestException;
+import com.snapserve.common.exception.ForbiddenException;
+import com.snapserve.common.exception.ServiceUnavailableException;
 import com.snapserve.common.response.ApiResponse;
 import com.snapserve.userclient.client.UserServiceClient;
 import com.snapserve.userclient.dto.customer.CustomerResponse;
@@ -34,6 +37,7 @@ import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
@@ -66,7 +70,7 @@ class BookingServiceTest {
     CustomerResponse customer = customerResponse();
     Booking savedBooking = savedBooking(request);
 
-    when(userServiceClient.getCustomerById(request.customerId()))
+    when(userServiceClient.getCustomerByEmail("customer@snapserve.com"))
         .thenReturn(ApiResponse.ok(customer));
     when(userServiceClient.getSpecialistById(request.specialistId()))
         .thenReturn(ApiResponse.ok(specialistResponse()));
@@ -77,7 +81,8 @@ class BookingServiceTest {
         .thenReturn(List.of());
     when(bookingRepository.save(any(Booking.class))).thenReturn(savedBooking);
 
-    BookingResponse response = bookingService.createBooking(request);
+    BookingResponse response =
+        bookingService.createBooking("customer@snapserve.com", "CUSTOMER", request);
 
     assertThat(response.id())
         .isEqualTo(((ObjectId) ReflectionTestUtils.getField(savedBooking, "id")).toString());
@@ -95,7 +100,7 @@ class BookingServiceTest {
     CustomerResponse customer = customerResponse();
     Booking savedBooking = savedBooking(request);
 
-    when(userServiceClient.getCustomerById(request.customerId()))
+    when(userServiceClient.getCustomerByEmail("customer@snapserve.com"))
         .thenReturn(ApiResponse.ok(customer));
     when(userServiceClient.getSpecialistById(request.specialistId()))
         .thenReturn(ApiResponse.ok(specialistResponse()));
@@ -109,13 +114,96 @@ class BookingServiceTest {
         .when(bookingNotificationDispatcher)
         .sendBookingCreatedConfirmation(savedBooking, customer);
 
-    BookingResponse response = bookingService.createBooking(request);
+    BookingResponse response =
+        bookingService.createBooking("customer@snapserve.com", "CUSTOMER", request);
 
     assertThat(response.id())
         .isEqualTo(((ObjectId) ReflectionTestUtils.getField(savedBooking, "id")).toString());
     assertThat(response.status()).isEqualTo("PENDING");
     verify(bookingRepository).save(any(Booking.class));
     verify(bookingNotificationDispatcher).sendBookingCreatedConfirmation(savedBooking, customer);
+  }
+
+  @Test
+  void createBookingBindsAuthenticatedCustomerInsteadOfCallerSuppliedCustomerId() {
+    BookingRequest request =
+        new BookingRequest(
+            "spoofed-customer",
+            "specialist-1",
+            LocalDateTime.of(2026, 4, 1, 10, 0),
+            "Fix kitchen sink",
+            BigDecimal.valueOf(149.99),
+            "Plumbing");
+    CustomerResponse customer = customerResponse();
+
+    when(userServiceClient.getCustomerByEmail("customer@snapserve.com"))
+        .thenReturn(ApiResponse.ok(customer));
+    when(userServiceClient.getSpecialistById(request.specialistId()))
+        .thenReturn(ApiResponse.ok(specialistResponse()));
+    when(bookingRepository.findConflictingBookings(
+            request.specialistId(),
+            request.bookingDate().minusHours(1),
+            request.bookingDate().plusHours(1)))
+        .thenReturn(List.of());
+    when(bookingRepository.save(any(Booking.class)))
+        .thenAnswer(
+            invocation -> {
+              Booking persistedBooking = invocation.getArgument(0);
+              ReflectionTestUtils.setField(persistedBooking, "id", new ObjectId());
+              return persistedBooking;
+            });
+
+    BookingResponse response =
+        bookingService.createBooking("customer@snapserve.com", "CUSTOMER", request);
+
+    org.mockito.ArgumentCaptor<Booking> savedBooking =
+        org.mockito.ArgumentCaptor.forClass(Booking.class);
+    verify(bookingRepository).save(savedBooking.capture());
+    assertThat(ReflectionTestUtils.getField(savedBooking.getValue(), "customerId"))
+        .isEqualTo("customer-1");
+    assertThat(response.customerId()).isEqualTo("customer-1");
+    verify(userServiceClient).getCustomerByEmail("customer@snapserve.com");
+    verify(userServiceClient, never()).getCustomerById("spoofed-customer");
+  }
+
+  @Test
+  void createBookingRejectsNonCustomerRole() {
+    assertThatThrownBy(
+            () ->
+                bookingService.createBooking(
+                    "specialist@snapserve.com", "SPECIALIST", bookingRequest()))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessage("Only customers can create bookings.");
+
+    verifyNoInteractions(userServiceClient, bookingRepository, bookingNotificationDispatcher);
+  }
+
+  @Test
+  void createBookingRejectsRoleNamesThatOnlyContainCustomerAsSubstring() {
+    assertThatThrownBy(
+            () ->
+                bookingService.createBooking(
+                    "customer@snapserve.com", "SUPERCUSTOMER", bookingRequest()))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessage("Only customers can create bookings.");
+
+    verifyNoInteractions(userServiceClient, bookingRepository, bookingNotificationDispatcher);
+  }
+
+  @Test
+  void getBookingsByCustomerRejectsAccessToAnotherCustomersBookings() {
+    when(userServiceClient.getCustomerByEmail("customer@snapserve.com"))
+        .thenReturn(ApiResponse.ok(customerResponse()));
+
+    assertThatThrownBy(
+            () ->
+                bookingService.getBookingsByCustomer(
+                    "customer-2", "customer@snapserve.com", "CUSTOMER", PageRequest.of(0, 20)))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessage("You can only view your own bookings.");
+
+    verify(userServiceClient).getCustomerByEmail("customer@snapserve.com");
+    verify(bookingRepository, never()).findByCustomerId(eq("customer-2"), any());
   }
 
   @Test
@@ -172,6 +260,118 @@ class BookingServiceTest {
   }
 
   @Test
+  void updateBookingDispatchesCancellationNotificationOnPendingToCancelledTransition() {
+    Booking booking = bookingWithStatus("PENDING");
+    String bookingId = ((ObjectId) ReflectionTestUtils.getField(booking, "id")).toString();
+    CustomerResponse customer = customerResponse();
+
+    when(bookingRepository.findById((ObjectId) ReflectionTestUtils.getField(booking, "id")))
+        .thenReturn(Optional.of(booking));
+    when(bookingRepository.save(any(Booking.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+    when(userServiceClient.getCustomerById("customer-1")).thenReturn(ApiResponse.ok(customer));
+
+    BookingResponse response =
+        bookingService.updateBooking(bookingId, new UpdateBookingRequest(null, "CANCELLED", null));
+
+    assertThat(response.status()).isEqualTo("CANCELLED");
+    InOrder inOrder =
+        Mockito.inOrder(bookingRepository, userServiceClient, bookingNotificationDispatcher);
+    inOrder.verify(bookingRepository).save(booking);
+    inOrder.verify(userServiceClient).getCustomerById("customer-1");
+    inOrder
+        .verify(bookingNotificationDispatcher)
+        .sendBookingCancelledNotification(booking, customer);
+  }
+
+  @Test
+  void updateBookingDispatchesCompletionNotificationOnConfirmedToCompletedTransition() {
+    Booking booking = bookingWithStatus("CONFIRMED");
+    String bookingId = ((ObjectId) ReflectionTestUtils.getField(booking, "id")).toString();
+    CustomerResponse customer = customerResponse();
+
+    when(bookingRepository.findById((ObjectId) ReflectionTestUtils.getField(booking, "id")))
+        .thenReturn(Optional.of(booking));
+    when(bookingRepository.save(any(Booking.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+    when(userServiceClient.getCustomerById("customer-1")).thenReturn(ApiResponse.ok(customer));
+
+    BookingResponse response =
+        bookingService.updateBooking(bookingId, new UpdateBookingRequest(null, "COMPLETED", null));
+
+    assertThat(response.status()).isEqualTo("COMPLETED");
+    InOrder inOrder =
+        Mockito.inOrder(bookingRepository, userServiceClient, bookingNotificationDispatcher);
+    inOrder.verify(bookingRepository).save(booking);
+    inOrder.verify(userServiceClient).getCustomerById("customer-1");
+    inOrder
+        .verify(bookingNotificationDispatcher)
+        .sendBookingCompletedNotification(booking, customer);
+  }
+
+  @Test
+  void updateBookingDoesNotDispatchStatusNotificationWhenStatusIsUnchanged() {
+    Booking booking = bookingWithStatus("CONFIRMED");
+    String bookingId = ((ObjectId) ReflectionTestUtils.getField(booking, "id")).toString();
+
+    when(bookingRepository.findById((ObjectId) ReflectionTestUtils.getField(booking, "id")))
+        .thenReturn(Optional.of(booking));
+    when(bookingRepository.save(any(Booking.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    BookingResponse response =
+        bookingService.updateBooking(bookingId, new UpdateBookingRequest(null, "CONFIRMED", null));
+
+    assertThat(response.status()).isEqualTo("CONFIRMED");
+    verify(bookingRepository).save(booking);
+    verifyNoInteractions(userServiceClient, bookingNotificationDispatcher);
+  }
+
+  @Test
+  void updateBookingKeepsPersistedStatusChangeWhenNotificationDispatchFails() {
+    Booking booking = bookingWithStatus("PENDING");
+    String bookingId = ((ObjectId) ReflectionTestUtils.getField(booking, "id")).toString();
+    CustomerResponse customer = customerResponse();
+
+    when(bookingRepository.findById((ObjectId) ReflectionTestUtils.getField(booking, "id")))
+        .thenReturn(Optional.of(booking));
+    when(bookingRepository.save(any(Booking.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+    when(userServiceClient.getCustomerById("customer-1")).thenReturn(ApiResponse.ok(customer));
+    doThrow(new RuntimeException("notification service unavailable"))
+        .when(bookingNotificationDispatcher)
+        .sendBookingCancelledNotification(booking, customer);
+
+    BookingResponse response =
+        bookingService.updateBooking(bookingId, new UpdateBookingRequest(null, "CANCELLED", null));
+
+    assertThat(response.status()).isEqualTo("CANCELLED");
+    verify(bookingRepository).save(booking);
+    verify(bookingNotificationDispatcher).sendBookingCancelledNotification(booking, customer);
+  }
+
+  @Test
+  void updateBookingKeepsPersistedStatusChangeWhenCustomerLookupForNotificationFails() {
+    Booking booking = bookingWithStatus("PENDING");
+    String bookingId = ((ObjectId) ReflectionTestUtils.getField(booking, "id")).toString();
+
+    when(bookingRepository.findById((ObjectId) ReflectionTestUtils.getField(booking, "id")))
+        .thenReturn(Optional.of(booking));
+    when(bookingRepository.save(any(Booking.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+    when(userServiceClient.getCustomerById("customer-1"))
+        .thenThrow(new ServiceUnavailableException("user service unavailable"));
+
+    BookingResponse response =
+        bookingService.updateBooking(bookingId, new UpdateBookingRequest(null, "CANCELLED", null));
+
+    assertThat(response.status()).isEqualTo("CANCELLED");
+    verify(bookingRepository).save(booking);
+    verify(userServiceClient).getCustomerById("customer-1");
+    verifyNoInteractions(bookingNotificationDispatcher);
+  }
+
+  @Test
   void getBookingByIdRejectsMalformedIdBeforeRepositoryAccess() {
     assertThatThrownBy(() -> bookingService.getBookingById("not-an-object-id"))
         .isInstanceOf(BadRequestException.class)
@@ -194,6 +394,7 @@ class BookingServiceTest {
     ReflectionTestUtils.setField(booking, "id", new ObjectId());
     ReflectionTestUtils.setField(booking, "customerId", "customer-1");
     ReflectionTestUtils.setField(booking, "specialistId", "specialist-1");
+    ReflectionTestUtils.setField(booking, "bookingDate", LocalDateTime.of(2026, 4, 1, 10, 0));
     ReflectionTestUtils.setField(booking, "status", status);
     return booking;
   }
