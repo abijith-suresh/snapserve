@@ -18,6 +18,7 @@ dependencies {
     implementation(libs.spring.boot.starter.web)
     implementation(libs.spring.boot.starter.data.mongodb)
     implementation(libs.spring.boot.starter.actuator)
+    implementation(libs.micrometer.registry.prometheus)
     implementation(libs.spring.boot.starter.validation)
 
     // Lombok (must be before MapStruct)

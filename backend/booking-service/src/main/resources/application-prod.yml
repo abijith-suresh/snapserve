@@ -3,6 +3,17 @@ spring:
     mongodb:
       auto-index-creation: false
 
+server:
+  shutdown: graceful
+
+user:
+  service:
+    url: ${USER_SERVICE_URL}
+
+notification:
+  service:
+    url: ${NOTIFICATION_SERVICE_URL}
+
 logging:
   level:
     com.snapserve.booking: WARN

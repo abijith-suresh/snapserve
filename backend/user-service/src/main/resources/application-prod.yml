@@ -3,6 +3,13 @@ spring:
     mongodb:
       auto-index-creation: false
 
+server:
+  shutdown: graceful
+
+notification:
+  service:
+    url: ${NOTIFICATION_SERVICE_URL}
+
 logging:
   level:
     com.snapserve.user: WARN

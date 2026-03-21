@@ -107,6 +107,29 @@ class AuthenticationInterceptorTest {
     assertThat(response.getErrorMessage()).isEqualTo("Missing or invalid Authorization header");
   }
 
+  @Test
+  void preHandleAllowsActuatorReadinessWithoutBearerToken() throws Exception {
+    MockHttpServletRequest request =
+        new MockHttpServletRequest("GET", "/actuator/health/readiness");
+    MockHttpServletResponse response = new MockHttpServletResponse();
+
+    boolean allowed = authenticationInterceptor.preHandle(request, response, new Object());
+
+    assertThat(allowed).isTrue();
+    assertThat(response.getStatus()).isEqualTo(200);
+  }
+
+  @Test
+  void preHandleAllowsPrometheusWithoutBearerToken() throws Exception {
+    MockHttpServletRequest request = new MockHttpServletRequest("GET", "/actuator/prometheus");
+    MockHttpServletResponse response = new MockHttpServletResponse();
+
+    boolean allowed = authenticationInterceptor.preHandle(request, response, new Object());
+
+    assertThat(allowed).isTrue();
+    assertThat(response.getStatus()).isEqualTo(200);
+  }
+
   private String createAuthServiceToken(String email, Role role) {
     long now = System.currentTimeMillis();
     return Jwts.builder()

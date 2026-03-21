@@ -45,7 +45,31 @@ management:
       enabled: false
     mongodb:
       enabled: false
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-components: never
+      show-details: never
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+gateway:
+  rate-limit:
+    enabled: ${GATEWAY_RATE_LIMIT_ENABLED:false}
+    use-forwarded-for: ${GATEWAY_RATE_LIMIT_USE_FORWARDED_FOR:false}
+    requests-per-window: ${GATEWAY_RATE_LIMIT_REQUESTS_PER_WINDOW:120}
+    window-seconds: ${GATEWAY_RATE_LIMIT_WINDOW_SECONDS:60}
+    include-paths:
+      - /api/**
+    exclude-paths:
+      - /actuator/**

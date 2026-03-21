@@ -1,13 +1,10 @@
 services:
-  # Optional MongoDB container - disable if using MongoDB Atlas
   mongo:
     image: mongo:7-jammy
-    restart: ${RESTART_POLICY:-no}
+    restart: ${RESTART_POLICY:-unless-stopped}
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-admin}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-password}
-    ports:
-      - '27017:27017'
     volumes:
       - mongo_data:/data/db
     healthcheck:
@@ -35,12 +32,12 @@ services:
     build:
       context: .
       dockerfile: backend/auth-service/Dockerfile
-    restart: ${RESTART_POLICY:-no}
+    restart: ${RESTART_POLICY:-unless-stopped}
     environment:
+      APP_ENV: production
+      SPRING_PROFILES_ACTIVE: prod
       MONGODB_URI: ${MONGODB_URI:-mongodb://admin:password@mongo:27017/snapserve-auth?authSource=admin}
       JWT_SECRET: ${JWT_SECRET}
-    ports:
-      - '9000:9000'
     depends_on:
       mongo:
         condition: service_healthy
@@ -58,12 +55,12 @@ services:
     build:
       context: .
       dockerfile: backend/user-service/Dockerfile
-    restart: ${RESTART_POLICY:-no}
+    restart: ${RESTART_POLICY:-unless-stopped}
     environment:
+      APP_ENV: production
+      SPRING_PROFILES_ACTIVE: prod
       MONGODB_URI: ${MONGODB_URI:-mongodb://admin:password@mongo:27017/snapserve-user?authSource=admin}
-      NOTIFICATION_SERVICE_URL: http://notification-service:9003
-    ports:
-      - '9001:9001'
+      NOTIFICATION_SERVICE_URL: ${NOTIFICATION_SERVICE_URL:-http://notification-service:9003}
     depends_on:
       mongo:
         condition: service_healthy
@@ -83,13 +80,13 @@ services:
     build:
       context: .
       dockerfile: backend/booking-service/Dockerfile
-    restart: ${RESTART_POLICY:-no}
+    restart: ${RESTART_POLICY:-unless-stopped}
     environment:
+      APP_ENV: production
+      SPRING_PROFILES_ACTIVE: prod
       MONGODB_URI: ${MONGODB_URI:-mongodb://admin:password@mongo:27017/snapserve-booking?authSource=admin}
-      USER_SERVICE_URL: http://user-service:9001
-      NOTIFICATION_SERVICE_URL: http://notification-service:9003
-    ports:
-      - '9002:9002'
+      USER_SERVICE_URL: ${USER_SERVICE_URL:-http://user-service:9001}
+      NOTIFICATION_SERVICE_URL: ${NOTIFICATION_SERVICE_URL:-http://notification-service:9003}
     depends_on:
       mongo:
         condition: service_healthy
@@ -111,13 +108,13 @@ services:
     build:
       context: .
       dockerfile: backend/notification-service/Dockerfile
-    restart: ${RESTART_POLICY:-no}
+    restart: ${RESTART_POLICY:-unless-stopped}
     environment:
+      APP_ENV: production
+      SPRING_PROFILES_ACTIVE: prod
       MONGODB_URI: ${MONGODB_URI:-mongodb://admin:password@mongo:27017/snapserve-notifications?authSource=admin}
       GMAIL_USERNAME: ${GMAIL_USERNAME:-}
       GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD:-}
-    ports:
-      - '9003:9003'
     depends_on:
       mongo:
         condition: service_healthy
@@ -135,14 +132,19 @@ services:
     build:
       context: .
       dockerfile: backend/api-gateway/Dockerfile
-    restart: ${RESTART_POLICY:-no}
+    restart: ${RESTART_POLICY:-unless-stopped}
     environment:
-      AUTH_SERVICE_URL: http://auth-service:9000
-      USER_SERVICE_URL: http://user-service:9001
-      BOOKING_SERVICE_URL: http://booking-service:9002
-      NOTIFICATION_SERVICE_URL: http://notification-service:9003
+      APP_ENV: production
+      SPRING_PROFILES_ACTIVE: prod
+      AUTH_SERVICE_URL: ${AUTH_SERVICE_URL:-http://auth-service:9000}
+      USER_SERVICE_URL: ${USER_SERVICE_URL:-http://user-service:9001}
+      BOOKING_SERVICE_URL: ${BOOKING_SERVICE_URL:-http://booking-service:9002}
+      NOTIFICATION_SERVICE_URL: ${NOTIFICATION_SERVICE_URL:-http://notification-service:9003}
       JWT_SECRET: ${JWT_SECRET}
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
+      GATEWAY_RATE_LIMIT_ENABLED: ${GATEWAY_RATE_LIMIT_ENABLED:-true}
+      GATEWAY_RATE_LIMIT_REQUESTS_PER_WINDOW: ${GATEWAY_RATE_LIMIT_REQUESTS_PER_WINDOW:-90}
+      GATEWAY_RATE_LIMIT_WINDOW_SECONDS: ${GATEWAY_RATE_LIMIT_WINDOW_SECONDS:-60}
     ports:
       - '9090:9090'
     depends_on:

@@ -47,6 +47,28 @@ docker compose up --build
 - API gateway: `http://localhost:9090`
 - Frontend Vite dev server in `frontend/`: `http://localhost:5173`
 
+## Production-Oriented Compose
+
+Use the prod overlay when you want production-safe runtime defaults without breaking local compose:
+
+```bash
+docker compose -f docker-compose.prod.yml up --build
+```
+
+- Enables `APP_ENV=production` and `SPRING_PROFILES_ACTIVE=prod` for all backend services.
+- Publishes only the gateway port; internal services and MongoDB stay internal to the compose network.
+- Switches compose healthchecks to actuator readiness probes.
+- Enables gateway IP-based rate limiting by default.
+- Keeps `X-Forwarded-For` trust disabled by default unless the gateway sits behind a trusted proxy that rewrites it.
+
+If `APP_ENV=production` is set without the `prod` Spring profile, services now fail fast during startup.
+
+## Observability
+
+- All backend services now expose `health`, `info`, and `prometheus` actuator endpoints.
+- Liveness and readiness probes are enabled at `/actuator/health/liveness` and `/actuator/health/readiness`.
+- Production profile keeps Swagger/OpenAPI disabled and uses graceful shutdown.
+
 ## Repo Hygiene
 
 - Backend generated outputs such as per-service `bin/` directories are local artifacts and should not be committed.

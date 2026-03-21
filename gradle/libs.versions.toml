@@ -16,6 +16,7 @@ spring-boot-starter-thymeleaf    = { module = "org.springframework.boot:spring-b
 spring-boot-starter-actuator     = { module = "org.springframework.boot:spring-boot-starter-actuator" }
 spring-boot-starter-validation   = { module = "org.springframework.boot:spring-boot-starter-validation" }
 spring-boot-starter-test         = { module = "org.springframework.boot:spring-boot-starter-test" }
+micrometer-registry-prometheus   = { module = "io.micrometer:micrometer-registry-prometheus" }
 spring-cloud-gateway-mvc         = { module = "org.springframework.cloud:spring-cloud-gateway-server-webmvc" }
 spring-cloud-openfeign           = { module = "org.springframework.cloud:spring-cloud-openfeign-core" }
 jjwt-api                         = { module = "io.jsonwebtoken:jjwt-api",     version.ref = "jjwt" }

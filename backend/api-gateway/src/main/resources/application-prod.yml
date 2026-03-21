@@ -1,1 +1,15 @@
-# All values injected via environment variables. No overrides needed here.
+server:
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+
+gateway:
+  rate-limit:
+    enabled: ${GATEWAY_RATE_LIMIT_ENABLED:true}
+    use-forwarded-for: ${GATEWAY_RATE_LIMIT_USE_FORWARDED_FOR:false}
+    requests-per-window: ${GATEWAY_RATE_LIMIT_REQUESTS_PER_WINDOW:90}
+    window-seconds: ${GATEWAY_RATE_LIMIT_WINDOW_SECONDS:60}
