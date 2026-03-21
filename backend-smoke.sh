@@ -195,7 +195,7 @@ curl --silent --show-error --fail \
   "$BASE_URL/api/v1/bookings/$booking_id/cancel" >/dev/null
 
 curl --silent --show-error --fail \
-  -H "Authorization: Bearer $access_token" \
+  -H "Authorization: Bearer $specialist_access_token" \
   "$BASE_URL/api/v1/notifications/templates" >/dev/null
 
 printf 'backend smoke checks passed\n'
