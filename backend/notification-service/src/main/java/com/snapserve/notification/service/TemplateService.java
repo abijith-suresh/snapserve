@@ -5,6 +5,7 @@ import com.snapserve.notification.model.NotificationTemplate;
 import com.snapserve.notification.repository.NotificationTemplateRepository;
 import com.snapserve.notificationclient.constants.NotificationChannel;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
@@ -53,5 +54,21 @@ public class TemplateService {
     NotificationTemplate template = getTemplateByName(name);
     template.setActive(false);
     templateRepository.save(template);
+  }
+
+  public String processTextTemplate(String template, Map<String, Object> parameters) {
+    if (template == null || parameters == null || parameters.isEmpty()) {
+      return template;
+    }
+
+    String processedTemplate = template;
+    for (Map.Entry<String, Object> entry : parameters.entrySet()) {
+      processedTemplate =
+          processedTemplate.replace(
+              "{" + entry.getKey() + "}",
+              entry.getValue() == null ? "" : entry.getValue().toString());
+    }
+
+    return processedTemplate;
   }
 }

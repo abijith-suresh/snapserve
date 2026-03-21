@@ -90,9 +90,8 @@ public class RetryService {
       if (history.getChannel().name().equals("EMAIL")) {
         emailStrategy.sendEmail(
             history.getRecipient(),
-            template.getSubject(),
+            templateService.processTextTemplate(template.getSubject(), history.getParameters()),
             template.getBodyHtml(),
-            template,
             history.getParameters());
       } else {
         channelFactory

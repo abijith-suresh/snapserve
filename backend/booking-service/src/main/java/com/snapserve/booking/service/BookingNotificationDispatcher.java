@@ -21,9 +21,22 @@ public class BookingNotificationDispatcher {
   private final NotificationServiceClient notificationServiceClient;
 
   public void sendBookingCreatedConfirmation(Booking booking, CustomerResponse customer) {
+    sendBookingNotification(booking, customer, NotificationTemplateNames.BOOKING_CONFIRMATION);
+  }
+
+  public void sendBookingCancelledNotification(Booking booking, CustomerResponse customer) {
+    sendBookingNotification(booking, customer, NotificationTemplateNames.BOOKING_CANCELLATION);
+  }
+
+  public void sendBookingCompletedNotification(Booking booking, CustomerResponse customer) {
+    sendBookingNotification(booking, customer, NotificationTemplateNames.BOOKING_COMPLETION);
+  }
+
+  private void sendBookingNotification(
+      Booking booking, CustomerResponse customer, String templateName) {
     notificationServiceClient.sendNotification(
         SendNotificationRequest.builder()
-            .templateName(NotificationTemplateNames.BOOKING_CONFIRMATION)
+            .templateName(templateName)
             .channel(NotificationChannel.EMAIL)
             .recipient(customer.email())
             .parameters(

@@ -50,4 +50,60 @@ class BookingNotificationDispatcherTest {
         .containsEntry("bookingId", "6613f8d69f9d5b42e88f1201")
         .containsEntry("appointmentTime", "2026-04-01 10:00");
   }
+
+  @Test
+  void sendBookingCancelledNotificationBuildsBookingCancellationEmailRequest() {
+    Booking booking = new Booking();
+    ReflectionTestUtils.setField(booking, "id", new ObjectId("6613f8d69f9d5b42e88f1202"));
+    ReflectionTestUtils.setField(booking, "bookingDate", LocalDateTime.of(2026, 4, 1, 10, 0));
+    CustomerResponse customer =
+        new CustomerResponse(
+            "customer-1", "jamie@example.com", "Jamie", "555-0100", "Main St", "CARD", null, null);
+
+    BookingNotificationDispatcher dispatcher =
+        new BookingNotificationDispatcher(notificationServiceClient);
+
+    dispatcher.sendBookingCancelledNotification(booking, customer);
+
+    ArgumentCaptor<SendNotificationRequest> requestCaptor =
+        ArgumentCaptor.forClass(SendNotificationRequest.class);
+    verify(notificationServiceClient).sendNotification(requestCaptor.capture());
+
+    SendNotificationRequest request = requestCaptor.getValue();
+    assertThat(request.getTemplateName()).isEqualTo(NotificationTemplateNames.BOOKING_CANCELLATION);
+    assertThat(request.getChannel()).isEqualTo(NotificationChannel.EMAIL);
+    assertThat(request.getRecipient()).isEqualTo("jamie@example.com");
+    assertThat(request.getParameters())
+        .containsEntry("customerName", "Jamie")
+        .containsEntry("bookingId", "6613f8d69f9d5b42e88f1202")
+        .containsEntry("appointmentTime", "2026-04-01 10:00");
+  }
+
+  @Test
+  void sendBookingCompletedNotificationBuildsBookingCompletionEmailRequest() {
+    Booking booking = new Booking();
+    ReflectionTestUtils.setField(booking, "id", new ObjectId("6613f8d69f9d5b42e88f1203"));
+    ReflectionTestUtils.setField(booking, "bookingDate", LocalDateTime.of(2026, 4, 1, 10, 0));
+    CustomerResponse customer =
+        new CustomerResponse(
+            "customer-1", "jamie@example.com", "Jamie", "555-0100", "Main St", "CARD", null, null);
+
+    BookingNotificationDispatcher dispatcher =
+        new BookingNotificationDispatcher(notificationServiceClient);
+
+    dispatcher.sendBookingCompletedNotification(booking, customer);
+
+    ArgumentCaptor<SendNotificationRequest> requestCaptor =
+        ArgumentCaptor.forClass(SendNotificationRequest.class);
+    verify(notificationServiceClient).sendNotification(requestCaptor.capture());
+
+    SendNotificationRequest request = requestCaptor.getValue();
+    assertThat(request.getTemplateName()).isEqualTo(NotificationTemplateNames.BOOKING_COMPLETION);
+    assertThat(request.getChannel()).isEqualTo(NotificationChannel.EMAIL);
+    assertThat(request.getRecipient()).isEqualTo("jamie@example.com");
+    assertThat(request.getParameters())
+        .containsEntry("customerName", "Jamie")
+        .containsEntry("bookingId", "6613f8d69f9d5b42e88f1203")
+        .containsEntry("appointmentTime", "2026-04-01 10:00");
+  }
 }

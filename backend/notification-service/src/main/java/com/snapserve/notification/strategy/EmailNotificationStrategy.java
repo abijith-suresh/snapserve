@@ -1,30 +1,45 @@
 package com.snapserve.notification.strategy;
 
-import com.snapserve.notification.model.NotificationTemplate;
 import com.snapserve.notificationclient.constants.NotificationChannel;
 import com.snapserve.notificationclient.request.SendNotificationRequest;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import java.util.Map;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
-import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
+import org.thymeleaf.spring6.SpringTemplateEngine;
+import org.thymeleaf.templatemode.TemplateMode;
+import org.thymeleaf.templateresolver.StringTemplateResolver;
 
-@Slf4j
 @Component
-@RequiredArgsConstructor
 public class EmailNotificationStrategy implements NotificationChannelStrategy {
 
+  private static final Logger log = LoggerFactory.getLogger(EmailNotificationStrategy.class);
+
   private final JavaMailSender javaMailSender;
-  private final TemplateEngine templateEngine;
+  private final SpringTemplateEngine templateEngine;
+
+  public EmailNotificationStrategy(JavaMailSender javaMailSender) {
+    this.javaMailSender = javaMailSender;
+    StringTemplateResolver templateResolver = new StringTemplateResolver();
+    templateResolver.setTemplateMode(TemplateMode.HTML);
+    templateResolver.setCacheable(false);
+
+    SpringTemplateEngine templateEngine = new SpringTemplateEngine();
+    templateEngine.setTemplateResolver(templateResolver);
+    this.templateEngine = templateEngine;
+  }
 
   @Value("${spring.mail.username}")
   private String fromAddress;
+
+  @Value("${spring.mail.password:}")
+  private String mailPassword;
 
   @Override
   public boolean supports(NotificationChannel channel) {
@@ -40,19 +55,18 @@ public class EmailNotificationStrategy implements NotificationChannelStrategy {
   }
 
   public void sendEmail(
-      String recipient,
-      String subject,
-      String bodyHtml,
-      NotificationTemplate template,
-      Map<String, Object> parameters)
+      String recipient, String subject, String bodyHtml, Map<String, Object> parameters)
       throws MessagingException {
 
-    Context context = new Context();
-    if (parameters != null) {
-      parameters.forEach(context::setVariable);
+    if (fromAddress == null
+        || fromAddress.isBlank()
+        || mailPassword == null
+        || mailPassword.isBlank()) {
+      throw new IllegalStateException(
+          "Email delivery is not configured. Set GMAIL_USERNAME and GMAIL_APP_PASSWORD.");
     }
 
-    String processedHtml = templateEngine.process(template.getBodyHtml(), context);
+    String processedHtml = renderHtml(bodyHtml, parameters);
 
     MimeMessage mimeMessage = javaMailSender.createMimeMessage();
     MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
@@ -63,5 +77,18 @@ public class EmailNotificationStrategy implements NotificationChannelStrategy {
 
     javaMailSender.send(mimeMessage);
     log.info("Email sent successfully to: {}", recipient);
+  }
+
+  private String renderHtml(String template, Map<String, Object> parameters) {
+    if (template == null) {
+      return null;
+    }
+
+    Context context = new Context();
+    if (parameters != null) {
+      parameters.forEach(context::setVariable);
+    }
+
+    return templateEngine.process(template, context);
   }
 }

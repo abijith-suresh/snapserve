@@ -72,9 +72,8 @@ public class NotificationOrchestrator {
       throws Exception {
     emailStrategy.sendEmail(
         request.getRecipient(),
-        template.getSubject(),
+        templateService.processTextTemplate(template.getSubject(), request.getParameters()),
         template.getBodyHtml(),
-        template,
         request.getParameters());
   }
 }
