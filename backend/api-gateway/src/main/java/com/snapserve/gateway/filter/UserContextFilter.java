@@ -11,16 +11,15 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Locale;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 /**
  * Servlet filter that runs after {@link AuthenticationInterceptor} has validated the JWT and set
  * request attributes. It wraps the request to inject X-User-Email and X-User-Roles headers so
- * downstream services can trust the caller's identity without re-parsing the token.
+ * downstream services can trust the caller's identity without accepting spoofed incoming values.
  */
 @Component
 @Order(1)
@@ -35,34 +34,57 @@ public class UserContextFilter implements Filter {
 
   private static class UserContextRequestWrapper extends HttpServletRequestWrapper {
 
-    private final Map<String, String> extraHeaders = new HashMap<>();
+    private static final String USER_EMAIL_HEADER = AuthenticationInterceptor.USER_EMAIL_ATTRIBUTE;
+    private static final String USER_ROLES_HEADER = AuthenticationInterceptor.USER_ROLES_ATTRIBUTE;
 
     UserContextRequestWrapper(HttpServletRequest request) {
       super(request);
-      Object email = request.getAttribute("X-User-Email");
-      Object roles = request.getAttribute("X-User-Roles");
-      if (email != null) extraHeaders.put("X-User-Email", email.toString());
-      if (roles != null) extraHeaders.put("X-User-Roles", roles.toString());
     }
 
     @Override
     public String getHeader(String name) {
-      String extra = extraHeaders.get(name);
-      return extra != null ? extra : super.getHeader(name);
+      String injectedHeader = resolveInjectedHeader(name);
+      return injectedHeader != null ? injectedHeader : super.getHeader(name);
     }
 
     @Override
     public Enumeration<String> getHeaders(String name) {
-      String extra = extraHeaders.get(name);
-      if (extra != null) return Collections.enumeration(Collections.singletonList(extra));
+      String injectedHeader = resolveInjectedHeader(name);
+      if (injectedHeader != null) {
+        return Collections.enumeration(Collections.singletonList(injectedHeader));
+      }
+
       return super.getHeaders(name);
     }
 
     @Override
     public Enumeration<String> getHeaderNames() {
       List<String> names = new ArrayList<>(Collections.list(super.getHeaderNames()));
-      names.addAll(extraHeaders.keySet());
+      if (resolveInjectedHeader(USER_EMAIL_HEADER) != null && !names.contains(USER_EMAIL_HEADER)) {
+        names.add(USER_EMAIL_HEADER);
+      }
+      if (resolveInjectedHeader(USER_ROLES_HEADER) != null && !names.contains(USER_ROLES_HEADER)) {
+        names.add(USER_ROLES_HEADER);
+      }
+
       return Collections.enumeration(names);
+    }
+
+    private String resolveInjectedHeader(String name) {
+      String normalizedName = normalizeHeaderName(name);
+      if (normalizeHeaderName(USER_EMAIL_HEADER).equals(normalizedName)) {
+        Object email = getAttribute(USER_EMAIL_HEADER);
+        return email != null ? email.toString() : null;
+      }
+      if (normalizeHeaderName(USER_ROLES_HEADER).equals(normalizedName)) {
+        Object roles = getAttribute(USER_ROLES_HEADER);
+        return roles != null ? roles.toString() : null;
+      }
+      return null;
+    }
+
+    private String normalizeHeaderName(String name) {
+      return name == null ? null : name.toLowerCase(Locale.ROOT);
     }
   }
 }

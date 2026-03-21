@@ -27,7 +27,7 @@ public class NotificationHistoryService {
     history.setTemplateName(templateName);
     history.setRecipient(recipient);
     history.setChannel(channel);
-    history.setStatus(NotificationStatus.PENDING.name());
+    history.setStatus(NotificationStatus.PENDING);
     history.setParameters(parameters);
     history.setRetryCount(0);
 
@@ -36,21 +36,21 @@ public class NotificationHistoryService {
 
   public void markAsSent(ObjectId notificationId) {
     NotificationHistory history = historyRepository.findById(notificationId).orElseThrow();
-    history.setStatus(NotificationStatus.SENT.name());
+    history.setStatus(NotificationStatus.SENT);
     history.setSentAt(Instant.now());
     historyRepository.save(history);
   }
 
   public void markAsFailed(ObjectId notificationId, String errorMessage) {
     NotificationHistory history = historyRepository.findById(notificationId).orElseThrow();
-    history.setStatus(NotificationStatus.FAILED.name());
+    history.setStatus(NotificationStatus.FAILED);
     history.setErrorMessage(errorMessage);
     historyRepository.save(history);
   }
 
   public void markAsRetrying(ObjectId notificationId) {
     NotificationHistory history = historyRepository.findById(notificationId).orElseThrow();
-    history.setStatus(NotificationStatus.RETRYING.name());
+    history.setStatus(NotificationStatus.RETRYING);
     history.setRetryCount(history.getRetryCount() + 1);
     historyRepository.save(history);
   }

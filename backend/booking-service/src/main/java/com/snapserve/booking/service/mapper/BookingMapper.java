@@ -18,12 +18,17 @@ import org.mapstruct.ReportingPolicy;
 public interface BookingMapper {
 
   @Mapping(target = "id", ignore = true)
+  @Mapping(target = "customerId", ignore = true)
+  @Mapping(target = "status", ignore = true)
   @Mapping(target = "createdAt", ignore = true)
   @Mapping(target = "updatedAt", ignore = true)
   @Mapping(target = "version", ignore = true)
   Booking toEntity(BookingRequest request);
 
   @Mapping(target = "id", expression = "java(booking.getId().toString())")
+  @Mapping(
+      target = "status",
+      expression = "java(booking.getStatus() != null ? booking.getStatus().name() : null)")
   BookingResponse toResponse(Booking booking);
 
   List<BookingResponse> toResponseList(List<Booking> bookings);
@@ -31,6 +36,7 @@ public interface BookingMapper {
   @Mapping(target = "id", ignore = true)
   @Mapping(target = "customerId", ignore = true)
   @Mapping(target = "specialistId", ignore = true)
+  @Mapping(target = "status", ignore = true)
   @Mapping(target = "createdAt", ignore = true)
   @Mapping(target = "updatedAt", ignore = true)
   @Mapping(target = "version", ignore = true)

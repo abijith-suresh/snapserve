@@ -136,15 +136,16 @@ public class ReviewController {
   })
   @PostMapping("/")
   public ResponseEntity<ApiResponse<ReviewResponse>> createReview(
-      @Parameter(description = "Customer ID", required = true) @RequestHeader("X-Customer-Id")
-          String customerId,
+      @Parameter(description = "Authenticated customer email", required = true)
+          @RequestHeader("X-User-Email")
+          String userEmail,
       @Parameter(description = "Review request", required = true) @Valid @RequestBody
           ReviewRequest request) {
     log.info(
-        "POST /api/v1/reviews/ - Creating review for booking: {} by customer: {}",
+        "POST /api/v1/reviews/ - Creating review for booking: {} by authenticated user: {}",
         request.bookingId(),
-        customerId);
-    ReviewResponse review = reviewService.createReview(customerId, request);
+        userEmail);
+    ReviewResponse review = reviewService.createReview(userEmail, request);
     log.info("Review created successfully with id: {}", review.id());
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(ApiResponse.ok("Review created successfully", review));
@@ -165,10 +166,12 @@ public class ReviewController {
   @DeleteMapping("/{id}")
   public ResponseEntity<ApiResponse<Void>> deleteReview(
       @Parameter(description = "Review ID", required = true) @PathVariable String id,
-      @Parameter(description = "Customer ID", required = true) @RequestHeader("X-Customer-Id")
-          String customerId) {
-    log.info("DELETE /api/v1/reviews/{} - Deleting review by customer: {}", id, customerId);
-    reviewService.deleteReview(id, customerId);
+      @Parameter(description = "Authenticated customer email", required = true)
+          @RequestHeader("X-User-Email")
+          String userEmail) {
+    log.info(
+        "DELETE /api/v1/reviews/{} - Deleting review by authenticated user: {}", id, userEmail);
+    reviewService.deleteReview(id, userEmail);
     log.info("Review {} deleted successfully", id);
     return ResponseEntity.status(HttpStatus.NO_CONTENT)
         .body(ApiResponse.ok("Review deleted successfully"));

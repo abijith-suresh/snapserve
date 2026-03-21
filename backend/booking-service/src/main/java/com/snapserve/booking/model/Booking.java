@@ -32,7 +32,7 @@ public class Booking extends Auditable {
 
   private LocalDateTime bookingDate;
 
-  private String status; // PENDING, CONFIRMED, CANCELLED, COMPLETED
+  private BookingStatus status;
 
   private String notes;
 

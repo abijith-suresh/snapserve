@@ -16,6 +16,7 @@ dependencies {
     implementation(libs.spring.boot.starter.security)
     implementation(libs.spring.boot.starter.data.mongodb)
     implementation(libs.spring.boot.starter.actuator)
+    implementation(libs.micrometer.registry.prometheus)
     implementation(libs.spring.boot.starter.validation)
     implementation(libs.jjwt.api)
     runtimeOnly(libs.jjwt.impl)

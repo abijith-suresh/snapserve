@@ -27,7 +27,7 @@ public class NotificationHistory extends Auditable {
 
   private NotificationChannel channel;
 
-  private String status;
+  private NotificationStatus status;
 
   private Map<String, Object> parameters;
 

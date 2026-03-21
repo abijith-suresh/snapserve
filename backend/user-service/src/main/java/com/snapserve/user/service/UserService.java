@@ -1,8 +1,10 @@
 package com.snapserve.user.service;
 
 import com.snapserve.common.exception.ConflictException;
+import com.snapserve.common.exception.ForbiddenException;
 import com.snapserve.common.exception.ResourceNotFoundException;
 import com.snapserve.common.model.Role;
+import com.snapserve.common.mongo.ObjectIdParser;
 import com.snapserve.user.mapper.UserMapper;
 import com.snapserve.user.model.UserEntity;
 import com.snapserve.user.repo.UserRepository;
@@ -12,7 +14,9 @@ import com.snapserve.userclient.dto.customer.CustomerResponse;
 import com.snapserve.userclient.dto.specialist.SpecialistListResponse;
 import com.snapserve.userclient.dto.specialist.SpecialistRequest;
 import com.snapserve.userclient.dto.specialist.SpecialistResponse;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
@@ -49,7 +53,7 @@ public class UserService {
 
     UserEntity user = userMapper.toSpecialistEntity(request);
     user.setRole(Role.SPECIALIST);
-    user.setVerified(false);
+    user.setVerified(true);
     user.setHourlyRate(request.hourlyRate());
     user = userRepository.save(user);
 
@@ -84,20 +88,51 @@ public class UserService {
   }
 
   public CustomerResponse getCustomerById(String id) {
-    ObjectId objectId = new ObjectId(id);
+    return getCustomerById(id, null, null);
+  }
+
+  public CustomerResponse getCustomerById(
+      String id, String authenticatedEmail, String authenticatedRoles) {
+    ObjectId objectId = parseObjectId(id, "customer");
     UserEntity customer =
         userRepository
             .findByIdAndRole(objectId, Role.CUSTOMER)
             .orElseThrow(() -> ResourceNotFoundException.of("Customer", id));
+
+    validateCustomerReadOwnership(customer, authenticatedEmail, authenticatedRoles);
+    return userMapper.toCustomerResponse(customer);
+  }
+
+  public CustomerResponse getCustomerByEmail(String email) {
+    return getCustomerByEmail(email, null, null);
+  }
+
+  public CustomerResponse getCustomerByEmail(
+      String email, String authenticatedEmail, String authenticatedRoles) {
+    UserEntity customer =
+        userRepository
+            .findByEmail(email)
+            .filter(user -> user.getRole() == Role.CUSTOMER)
+            .orElseThrow(
+                () -> new ResourceNotFoundException("Customer not found for email: " + email));
+
+    validateCustomerReadOwnership(customer, authenticatedEmail, authenticatedRoles);
     return userMapper.toCustomerResponse(customer);
   }
 
   public SpecialistResponse getSpecialistById(String id) {
-    ObjectId objectId = new ObjectId(id);
+    return getSpecialistById(id, null, null);
+  }
+
+  public SpecialistResponse getSpecialistById(
+      String id, String authenticatedEmail, String authenticatedRoles) {
+    ObjectId objectId = parseObjectId(id, "specialist");
     UserEntity specialist =
         userRepository
             .findByIdAndRole(objectId, Role.SPECIALIST)
             .orElseThrow(() -> ResourceNotFoundException.of("Specialist", id));
+
+    validateSpecialistReadOwnership(specialist, authenticatedEmail, authenticatedRoles);
     return userMapper.toSpecialistResponse(specialist);
   }
 
@@ -116,12 +151,20 @@ public class UserService {
     return toSpecialistListResponse(specialistPage);
   }
 
-  public CustomerResponse updateCustomer(String id, CustomerRequest request) {
-    ObjectId objectId = new ObjectId(id);
+  public CustomerResponse updateCustomer(
+      String id, String authenticatedEmail, String authenticatedRoles, CustomerRequest request) {
+    ObjectId objectId = parseObjectId(id, "customer");
     UserEntity customer =
         userRepository
             .findByIdAndRole(objectId, Role.CUSTOMER)
             .orElseThrow(() -> ResourceNotFoundException.of("Customer", id));
+
+    validateCustomerOwnership(customer, authenticatedEmail, authenticatedRoles);
+
+    if (!request.email().equalsIgnoreCase(authenticatedEmail)) {
+      throw new com.snapserve.common.exception.BadRequestException(
+          "Customer email must match the authenticated user.");
+    }
 
     if (!customer.getEmail().equals(request.email())
         && userRepository.existsByEmail(request.email())) {
@@ -139,12 +182,20 @@ public class UserService {
     return userMapper.toCustomerResponse(customer);
   }
 
-  public SpecialistResponse updateSpecialist(String id, SpecialistRequest request) {
-    ObjectId objectId = new ObjectId(id);
+  public SpecialistResponse updateSpecialist(
+      String id, String authenticatedEmail, String authenticatedRoles, SpecialistRequest request) {
+    ObjectId objectId = parseObjectId(id, "specialist");
     UserEntity specialist =
         userRepository
             .findByIdAndRole(objectId, Role.SPECIALIST)
             .orElseThrow(() -> ResourceNotFoundException.of("Specialist", id));
+
+    validateSpecialistOwnership(specialist, authenticatedEmail, authenticatedRoles);
+
+    if (!request.email().equalsIgnoreCase(authenticatedEmail)) {
+      throw new com.snapserve.common.exception.BadRequestException(
+          "Specialist email must match the authenticated user.");
+    }
 
     if (!specialist.getEmail().equals(request.email())
         && userRepository.existsByEmail(request.email())) {
@@ -163,23 +214,27 @@ public class UserService {
     return userMapper.toSpecialistResponse(specialist);
   }
 
-  public void deleteCustomer(String id) {
-    ObjectId objectId = new ObjectId(id);
+  public void deleteCustomer(String id, String authenticatedEmail, String authenticatedRoles) {
+    ObjectId objectId = parseObjectId(id, "customer");
     UserEntity customer =
         userRepository
             .findByIdAndRole(objectId, Role.CUSTOMER)
             .orElseThrow(() -> ResourceNotFoundException.of("Customer", id));
 
+    validateCustomerDeletionOwnership(customer, authenticatedEmail, authenticatedRoles);
+
     userRepository.delete(customer);
     log.info("Customer deleted: {}", customer.getEmail());
   }
 
-  public void deleteSpecialist(String id) {
-    ObjectId objectId = new ObjectId(id);
+  public void deleteSpecialist(String id, String authenticatedEmail, String authenticatedRoles) {
+    ObjectId objectId = parseObjectId(id, "specialist");
     UserEntity specialist =
         userRepository
             .findByIdAndRole(objectId, Role.SPECIALIST)
             .orElseThrow(() -> ResourceNotFoundException.of("Specialist", id));
+
+    validateSpecialistDeletionOwnership(specialist, authenticatedEmail, authenticatedRoles);
 
     userRepository.delete(specialist);
     log.info("Specialist deleted: {}", specialist.getEmail());
@@ -205,5 +260,95 @@ public class UserService {
         page.getTotalPages(),
         page.isFirst(),
         page.isLast());
+  }
+
+  private ObjectId parseObjectId(String id, String resourceName) {
+    return ObjectIdParser.parse(id, resourceName);
+  }
+
+  private void validateCustomerOwnership(
+      UserEntity customer, String authenticatedEmail, String authenticatedRoles) {
+    if (!hasRole(authenticatedRoles, Role.CUSTOMER)) {
+      throw new ForbiddenException("Only customers can update customer profiles.");
+    }
+
+    if (!customer.getEmail().equalsIgnoreCase(authenticatedEmail)) {
+      throw new ForbiddenException("You can only update your own customer profile.");
+    }
+  }
+
+  private void validateCustomerReadOwnership(
+      UserEntity customer, String authenticatedEmail, String authenticatedRoles) {
+    if (authenticatedEmail == null && authenticatedRoles == null) {
+      return;
+    }
+
+    if (!hasRole(authenticatedRoles, Role.CUSTOMER)) {
+      throw new ForbiddenException("Only customers can view customer profiles.");
+    }
+
+    if (!customer.getEmail().equalsIgnoreCase(authenticatedEmail)) {
+      throw new ForbiddenException("You can only view your own customer profile.");
+    }
+  }
+
+  private void validateSpecialistOwnership(
+      UserEntity specialist, String authenticatedEmail, String authenticatedRoles) {
+    if (!hasRole(authenticatedRoles, Role.SPECIALIST)) {
+      throw new ForbiddenException("Only specialists can update specialist profiles.");
+    }
+
+    if (!specialist.getEmail().equalsIgnoreCase(authenticatedEmail)) {
+      throw new ForbiddenException("You can only update your own specialist profile.");
+    }
+  }
+
+  private void validateSpecialistReadOwnership(
+      UserEntity specialist, String authenticatedEmail, String authenticatedRoles) {
+    if (authenticatedEmail == null && authenticatedRoles == null) {
+      return;
+    }
+
+    if (!hasRole(authenticatedRoles, Role.SPECIALIST)) {
+      throw new ForbiddenException("Only specialists can view specialist profiles.");
+    }
+
+    if (!specialist.getEmail().equalsIgnoreCase(authenticatedEmail)) {
+      throw new ForbiddenException("You can only view your own specialist profile.");
+    }
+  }
+
+  private void validateCustomerDeletionOwnership(
+      UserEntity customer, String authenticatedEmail, String authenticatedRoles) {
+    if (!hasRole(authenticatedRoles, Role.CUSTOMER)) {
+      throw new ForbiddenException("Only customers can delete customer profiles.");
+    }
+
+    if (!customer.getEmail().equalsIgnoreCase(authenticatedEmail)) {
+      throw new ForbiddenException("You can only delete your own customer profile.");
+    }
+  }
+
+  private void validateSpecialistDeletionOwnership(
+      UserEntity specialist, String authenticatedEmail, String authenticatedRoles) {
+    if (!hasRole(authenticatedRoles, Role.SPECIALIST)) {
+      throw new ForbiddenException("Only specialists can delete specialist profiles.");
+    }
+
+    if (!specialist.getEmail().equalsIgnoreCase(authenticatedEmail)) {
+      throw new ForbiddenException("You can only delete your own specialist profile.");
+    }
+  }
+
+  private boolean hasRole(String authenticatedRoles, Role expectedRole) {
+    if (authenticatedRoles == null || authenticatedRoles.isBlank()) {
+      return false;
+    }
+
+    return Arrays.stream(authenticatedRoles.split(","))
+        .map(String::trim)
+        .filter(role -> !role.isEmpty())
+        .map(role -> role.toUpperCase(Locale.ROOT))
+        .anyMatch(expectedRole.name()::equals);
   }
 }

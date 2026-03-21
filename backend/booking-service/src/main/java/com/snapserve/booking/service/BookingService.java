@@ -5,16 +5,23 @@ import com.snapserve.booking.dto.request.UpdateBookingRequest;
 import com.snapserve.booking.dto.response.BookingListResponse;
 import com.snapserve.booking.dto.response.BookingResponse;
 import com.snapserve.booking.model.Booking;
+import com.snapserve.booking.model.BookingStatus;
 import com.snapserve.booking.repository.BookingRepository;
 import com.snapserve.booking.service.mapper.BookingMapper;
 import com.snapserve.common.exception.ConflictException;
+import com.snapserve.common.exception.ForbiddenException;
 import com.snapserve.common.exception.ResourceNotFoundException;
 import com.snapserve.common.exception.ServiceUnavailableException;
+import com.snapserve.common.mongo.ObjectIdParser;
 import com.snapserve.userclient.client.UserServiceClient;
+import com.snapserve.userclient.dto.customer.CustomerResponse;
+import com.snapserve.userclient.dto.specialist.SpecialistResponse;
 import feign.FeignException;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
@@ -31,25 +38,32 @@ public class BookingService {
   private final BookingRepository bookingRepository;
   private final BookingMapper bookingMapper;
   private final UserServiceClient userServiceClient;
+  private final BookingNotificationDispatcher bookingNotificationDispatcher;
 
   @Transactional(readOnly = true)
-  public BookingResponse getBookingById(String id) {
+  public BookingResponse getBookingById(String id, String userEmail, String userRoles) {
     log.info("Fetching booking with id: {}", id);
 
     Booking booking =
         bookingRepository
-            .findById(new ObjectId(id))
+            .findById(parseObjectId(id, "booking"))
             .orElseThrow(() -> ResourceNotFoundException.of("Booking", id));
+
+    validateBookingAccess(booking, userEmail, userRoles);
 
     log.debug("Found booking: {}", booking);
     return bookingMapper.toResponse(booking);
   }
 
   @Transactional(readOnly = true)
-  public BookingListResponse getBookingsByCustomer(String customerId, Pageable pageable) {
+  public BookingListResponse getBookingsByCustomer(
+      String customerId, String userEmail, String userRoles, Pageable pageable) {
     log.info("Fetching bookings for customer: {} with pagination: {}", customerId, pageable);
 
-    validateCustomerExists(customerId);
+    String authenticatedCustomerId = resolveAuthenticatedCustomerId(userEmail, userRoles);
+    if (!authenticatedCustomerId.equals(customerId)) {
+      throw new ForbiddenException("You can only view your own bookings.");
+    }
 
     Page<Booking> bookingPage = bookingRepository.findByCustomerId(customerId, pageable);
 
@@ -58,10 +72,11 @@ public class BookingService {
   }
 
   @Transactional(readOnly = true)
-  public BookingListResponse getBookingsBySpecialist(String specialistId, Pageable pageable) {
+  public BookingListResponse getBookingsBySpecialist(
+      String specialistId, String userEmail, String userRoles, Pageable pageable) {
     log.info("Fetching bookings for specialist: {} with pagination: {}", specialistId, pageable);
 
-    validateSpecialistExists(specialistId);
+    validateSpecialistBookingAccess(specialistId, userEmail, userRoles);
 
     Page<Booking> bookingPage = bookingRepository.findBySpecialistId(specialistId, pageable);
 
@@ -71,17 +86,22 @@ public class BookingService {
 
   @Transactional(readOnly = true)
   public BookingListResponse getBookingsByCustomerAndStatus(
-      String customerId, String status, Pageable pageable) {
+      String customerId, String status, String userEmail, String userRoles, Pageable pageable) {
     log.info(
         "Fetching bookings for customer: {} with status: {} and pagination: {}",
         customerId,
         status,
         pageable);
 
-    validateCustomerExists(customerId);
+    String authenticatedCustomerId = resolveAuthenticatedCustomerId(userEmail, userRoles);
+    if (!authenticatedCustomerId.equals(customerId)) {
+      throw new ForbiddenException("You can only view your own bookings.");
+    }
+
+    BookingStatus bookingStatus = BookingStatus.from(status);
 
     Page<Booking> bookingPage =
-        bookingRepository.findByCustomerIdAndStatus(customerId, status, pageable);
+        bookingRepository.findByCustomerIdAndStatus(customerId, bookingStatus, pageable);
 
     log.debug(
         "Found {} bookings for customer {} with status {}",
@@ -93,17 +113,19 @@ public class BookingService {
 
   @Transactional(readOnly = true)
   public BookingListResponse getBookingsBySpecialistAndStatus(
-      String specialistId, String status, Pageable pageable) {
+      String specialistId, String status, String userEmail, String userRoles, Pageable pageable) {
     log.info(
         "Fetching bookings for specialist: {} with status: {} and pagination: {}",
         specialistId,
         status,
         pageable);
 
-    validateSpecialistExists(specialistId);
+    validateSpecialistBookingAccess(specialistId, userEmail, userRoles);
+
+    BookingStatus bookingStatus = BookingStatus.from(status);
 
     Page<Booking> bookingPage =
-        bookingRepository.findBySpecialistIdAndStatus(specialistId, status, pageable);
+        bookingRepository.findBySpecialistIdAndStatus(specialistId, bookingStatus, pageable);
 
     log.debug(
         "Found {} bookings for specialist {} with status {}",
@@ -124,63 +146,81 @@ public class BookingService {
   }
 
   @Transactional
-  public BookingResponse createBooking(BookingRequest request) {
+  public BookingResponse createBooking(String userEmail, String userRoles, BookingRequest request) {
     log.info(
-        "Creating booking for customer: {} with specialist: {}",
-        request.customerId(),
+        "Creating booking for authenticated user: {} with specialist: {}",
+        userEmail,
         request.specialistId());
 
-    validateCustomerExists(request.customerId());
+    CustomerResponse customer = requireAuthenticatedCustomer(userEmail, userRoles);
     validateSpecialistExists(request.specialistId());
     checkForBookingConflicts(request.specialistId(), request.bookingDate());
 
     Booking booking = bookingMapper.toEntity(request);
-    booking.setStatus("PENDING");
+    booking.setCustomerId(customer.id());
+    booking.setStatus(BookingStatus.PENDING);
 
     Booking savedBooking = bookingRepository.save(booking);
 
     log.info("Booking created successfully with id: {}", savedBooking.getId());
 
-    // TODO: Publish async event for notification-service to send confirmation email
-    // eventPublisher.publishEvent(new BookingCreatedEvent(savedBooking));
+    try {
+      bookingNotificationDispatcher.sendBookingCreatedConfirmation(savedBooking, customer);
+    } catch (RuntimeException ex) {
+      log.error(
+          "Booking {} was persisted but confirmation notification failed: {}",
+          savedBooking.getId(),
+          ex.getMessage(),
+          ex);
+    }
 
     return bookingMapper.toResponse(savedBooking);
   }
 
   @Transactional
-  public BookingResponse updateBooking(String id, UpdateBookingRequest request) {
+  public BookingResponse updateBooking(
+      String id, String userEmail, String userRoles, UpdateBookingRequest request) {
     log.info("Updating booking with id: {}", id);
 
     Booking booking =
         bookingRepository
-            .findById(new ObjectId(id))
+            .findById(parseObjectId(id, "booking"))
             .orElseThrow(() -> ResourceNotFoundException.of("Booking", id));
+
+    validateBookingUpdateAccess(booking, userEmail, userRoles, request);
 
     if (request.bookingDate() != null) {
       checkForBookingConflicts(booking.getSpecialistId(), request.bookingDate(), id);
     }
 
+    BookingStatus previousStatus = booking.getStatus();
+    BookingStatus requestedStatus = validateStatusTransition(previousStatus, request.status());
+
     bookingMapper.updateEntityFromRequest(request, booking);
+    if (requestedStatus != null) {
+      booking.setStatus(requestedStatus);
+    }
 
     Booking updatedBooking = bookingRepository.save(booking);
 
     log.info("Booking updated successfully with id: {}", id);
 
-    // TODO: Publish async event for notification-service to send update email
-    // eventPublisher.publishEvent(new BookingUpdatedEvent(updatedBooking));
+    dispatchStatusChangeNotification(previousStatus, updatedBooking);
 
     return bookingMapper.toResponse(updatedBooking);
   }
 
   @Transactional
-  public void deleteBooking(String id) {
+  public void deleteBooking(String id, String userEmail, String userRoles) {
     log.info("Deleting booking with id: {}", id);
 
-    ObjectId objectId = new ObjectId(id);
+    ObjectId objectId = parseObjectId(id, "booking");
     Booking booking =
         bookingRepository
             .findById(objectId)
             .orElseThrow(() -> ResourceNotFoundException.of("Booking", id));
+
+    validateBookingDeletionAccess(booking, userEmail, userRoles);
 
     bookingRepository.delete(booking);
 
@@ -194,9 +234,17 @@ public class BookingService {
   public void validateCustomerExists(String customerId) {
     log.debug("Validating customer exists: {}", customerId);
 
+    requireCustomer(customerId);
+    log.debug("Customer {} validated successfully", customerId);
+  }
+
+  @Transactional(readOnly = true)
+  public CustomerResponse requireCustomer(String customerId) {
+    log.debug("Loading customer: {}", customerId);
+
     try {
-      userServiceClient.getCustomerById(customerId);
-      log.debug("Customer {} validated successfully", customerId);
+      return requireResponseBody(
+          userServiceClient.getCustomerById(customerId), "customer", customerId);
     } catch (FeignException.NotFound e) {
       log.warn("Customer not found: {}", customerId);
       throw ResourceNotFoundException.of("Customer", customerId);
@@ -207,11 +255,32 @@ public class BookingService {
   }
 
   @Transactional(readOnly = true)
+  public CustomerResponse requireAuthenticatedCustomer(String userEmail, String userRoles) {
+    if (!hasRole(userRoles, "CUSTOMER")) {
+      throw new ForbiddenException("Only customers can create bookings.");
+    }
+
+    try {
+      return requireResponseBody(
+          userServiceClient.getCustomerByEmail(userEmail), "authenticated customer", userEmail);
+    } catch (FeignException.NotFound e) {
+      log.warn("Authenticated customer not found for email: {}", userEmail);
+      throw new ResourceNotFoundException(
+          "Authenticated customer not found for email: " + userEmail);
+    } catch (FeignException e) {
+      log.error("Error resolving authenticated customer {}: {}", userEmail, e.getMessage());
+      throw new ServiceUnavailableException(
+          "Unable to resolve authenticated customer. Please try again later.");
+    }
+  }
+
+  @Transactional(readOnly = true)
   public void validateSpecialistExists(String specialistId) {
     log.debug("Validating specialist exists: {}", specialistId);
 
     try {
-      userServiceClient.getSpecialistById(specialistId);
+      requireResponseBody(
+          userServiceClient.getSpecialistById(specialistId), "specialist", specialistId);
       log.debug("Specialist {} validated successfully", specialistId);
     } catch (FeignException.NotFound e) {
       log.warn("Specialist not found: {}", specialistId);
@@ -258,6 +327,50 @@ public class BookingService {
         "No booking conflicts found for specialist: {} at time: {}", specialistId, bookingDate);
   }
 
+  private BookingStatus validateStatusTransition(
+      BookingStatus currentStatus, String requestedStatusValue) {
+    if (requestedStatusValue == null) {
+      return null;
+    }
+
+    BookingStatus requestedStatus = BookingStatus.from(requestedStatusValue);
+    if (!currentStatus.canTransitionTo(requestedStatus)) {
+      throw new com.snapserve.common.exception.BadRequestException(
+          "Booking cannot transition from " + currentStatus + " to " + requestedStatus + ".");
+    }
+
+    return requestedStatus;
+  }
+
+  private void dispatchStatusChangeNotification(
+      BookingStatus previousStatus, Booking updatedBooking) {
+    BookingStatus updatedStatus = updatedBooking.getStatus();
+    if (updatedStatus == null || updatedStatus.equals(previousStatus)) {
+      return;
+    }
+
+    if (updatedStatus != BookingStatus.CANCELLED && updatedStatus != BookingStatus.COMPLETED) {
+      return;
+    }
+
+    try {
+      CustomerResponse customer = requireCustomer(updatedBooking.getCustomerId());
+
+      if (updatedStatus == BookingStatus.CANCELLED) {
+        bookingNotificationDispatcher.sendBookingCancelledNotification(updatedBooking, customer);
+      } else {
+        bookingNotificationDispatcher.sendBookingCompletedNotification(updatedBooking, customer);
+      }
+    } catch (RuntimeException ex) {
+      log.error(
+          "Booking {} status changed to {} but notification failed: {}",
+          updatedBooking.getId(),
+          updatedStatus,
+          ex.getMessage(),
+          ex);
+    }
+  }
+
   private BookingListResponse toBookingListResponse(Page<Booking> page) {
     return new BookingListResponse(
         bookingMapper.toResponseList(page.getContent()),
@@ -267,5 +380,130 @@ public class BookingService {
         page.getTotalPages(),
         page.isFirst(),
         page.isLast());
+  }
+
+  private ObjectId parseObjectId(String id, String resourceName) {
+    return ObjectIdParser.parse(id, resourceName);
+  }
+
+  private void validateBookingAccess(Booking booking, String userEmail, String userRoles) {
+    if (hasRole(userRoles, "CUSTOMER")) {
+      String authenticatedCustomerId = resolveAuthenticatedCustomerId(userEmail, userRoles);
+      if (booking.getCustomerId().equals(authenticatedCustomerId)) {
+        return;
+      }
+    }
+
+    if (hasRole(userRoles, "SPECIALIST")) {
+      SpecialistResponse specialist = requireSpecialist(booking.getSpecialistId());
+      if (specialist.email().equalsIgnoreCase(userEmail)) {
+        return;
+      }
+    }
+
+    throw new ForbiddenException("You can only access your own or assigned bookings.");
+  }
+
+  private void validateBookingUpdateAccess(
+      Booking booking, String userEmail, String userRoles, UpdateBookingRequest request) {
+    if (hasRole(userRoles, "CUSTOMER")) {
+      String authenticatedCustomerId = resolveAuthenticatedCustomerId(userEmail, userRoles);
+      if (!booking.getCustomerId().equals(authenticatedCustomerId)) {
+        throw new ForbiddenException("You can only update your own or assigned bookings.");
+      }
+
+      boolean isCustomerCancellationOnly =
+          BookingStatus.CANCELLED.name().equals(request.status())
+              && request.bookingDate() == null
+              && request.notes() == null;
+
+      if (!isCustomerCancellationOnly) {
+        throw new ForbiddenException("Customers can only cancel their own bookings.");
+      }
+
+      return;
+    }
+
+    if (hasRole(userRoles, "SPECIALIST")) {
+      SpecialistResponse specialist = requireSpecialist(booking.getSpecialistId());
+      if (!specialist.email().equalsIgnoreCase(userEmail)) {
+        throw new ForbiddenException("You can only update your own or assigned bookings.");
+      }
+
+      return;
+    }
+
+    throw new ForbiddenException("You can only update your own or assigned bookings.");
+  }
+
+  private void validateBookingDeletionAccess(Booking booking, String userEmail, String userRoles) {
+    if (!hasRole(userRoles, "CUSTOMER")) {
+      throw new ForbiddenException("Only customers can delete their own pending bookings.");
+    }
+
+    String authenticatedCustomerId = resolveAuthenticatedCustomerId(userEmail, userRoles);
+    if (!booking.getCustomerId().equals(authenticatedCustomerId)) {
+      throw new ForbiddenException("Only customers can delete their own pending bookings.");
+    }
+
+    if (booking.getStatus() != BookingStatus.PENDING) {
+      throw new ForbiddenException("Only pending bookings can be deleted.");
+    }
+  }
+
+  private String resolveAuthenticatedCustomerId(String userEmail, String userRoles) {
+    return requireAuthenticatedCustomer(userEmail, userRoles).id();
+  }
+
+  private void validateSpecialistBookingAccess(
+      String specialistId, String userEmail, String userRoles) {
+    if (!hasRole(userRoles, "SPECIALIST")) {
+      throw new ForbiddenException("Only specialists can view specialist bookings.");
+    }
+
+    SpecialistResponse specialist = requireSpecialist(specialistId);
+    if (!specialist.email().equalsIgnoreCase(userEmail)) {
+      throw new ForbiddenException("You can only view your own bookings.");
+    }
+  }
+
+  private SpecialistResponse requireSpecialist(String specialistId) {
+    log.debug("Loading specialist: {}", specialistId);
+
+    try {
+      return requireResponseBody(
+          userServiceClient.getSpecialistById(specialistId), "specialist", specialistId);
+    } catch (FeignException.NotFound e) {
+      log.warn("Specialist not found: {}", specialistId);
+      throw ResourceNotFoundException.of("Specialist", specialistId);
+    } catch (FeignException e) {
+      log.error("Error loading specialist {}: {}", specialistId, e.getMessage());
+      throw new ServiceUnavailableException(
+          "Unable to validate specialist. Please try again later.");
+    }
+  }
+
+  private boolean hasRole(String userRoles, String expectedRole) {
+    if (userRoles == null || userRoles.isBlank()) {
+      return false;
+    }
+
+    return Arrays.stream(userRoles.split(","))
+        .map(String::trim)
+        .filter(role -> !role.isEmpty())
+        .map(role -> role.toUpperCase(Locale.ROOT))
+        .anyMatch(expectedRole::equals);
+  }
+
+  private <T> T requireResponseBody(
+      com.snapserve.common.response.ApiResponse<T> response,
+      String resourceName,
+      String identifier) {
+    if (response == null || response.getData() == null) {
+      throw new ServiceUnavailableException(
+          "Unable to validate " + resourceName + ". Please try again later.");
+    }
+
+    return response.getData();
   }
 }

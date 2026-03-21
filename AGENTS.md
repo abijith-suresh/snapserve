@@ -1,7 +1,11 @@
 # SnapServe — Agent Context
 
 SnapServe is a service-booking platform where customers book appointments with specialists
-(plumbers, electricians, etc). Admins manage specialist approvals and complaints.
+(plumbers, electricians, etc).
+
+Current required backend scope focuses on authentication, customer/specialist profiles,
+bookings, reviews, and notifications. Admin workflows, complaint handling, and specialist
+approval flows are intentionally out of scope unless an issue explicitly adds them back.
 
 ## Architecture
 
@@ -11,8 +15,8 @@ SnapServe is a service-booking platform where customers book appointments with s
 |---------|------|----------------|
 | api-gateway | 9090 | Routing, JWT validation, CORS, rate limiting |
 | auth-service | 9000 | Register, login, token management |
-| user-service | 9001 | Customer, Specialist, Admin profiles |
-| booking-service | 9002 | Bookings, reviews, complaints |
+| user-service | 9001 | Customer and specialist profiles |
+| booking-service | 9002 | Bookings and reviews |
 | notification-service | 9003 | Email notifications |
 
 Frontend runs on port 3000. All frontend API calls go through api-gateway at port 9090.
@@ -26,15 +30,16 @@ Frontend runs on port 3000. All frontend API calls go through api-gateway at por
 ## Key Rules for Agents
 
 1. **Read the issue description carefully** — each issue is atomic and self-contained.
-2. **No WebFlux**: All services use standard `spring-boot-starter-web` (blocking). Never use WebFlux or reactive types (`Mono`, `Flux`).
-3. **No hardcoded secrets**: All secrets come from environment variables. See `.env.example` for the full list.
-4. **YAML config only**: Services use `application.yml` and `application-prod.yml`. No `.properties` files.
-5. **Service URLs**: Services reach each other via Docker Compose DNS (e.g. `http://auth-service:9000`). URLs injected via `@Value` from env vars.
-6. **CORS lives at the gateway only**: Never add `@CrossOrigin` to any controller.
-7. **TypeScript strict**: Frontend is TypeScript strict mode. `bun run tsc --noEmit` must pass with zero errors.
-8. **Conventional commits**: All commits must follow Conventional Commits format (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`, `ci:`). commitlint enforces this.
-9. **Monorepo**: Backend is a Gradle multi-project build. Run `./gradlew :backend:<service-name>:build` for a specific service, or `./gradlew build` for all.
-10. **No Eureka, no Config Server**: Removed. Docker Compose DNS handles service discovery. Per-service YAML handles config.
+2. **Reduced backend scope**: Do not treat admin workflows, complaints, or approval flows as required unless the issue explicitly asks for them.
+3. **No WebFlux**: All services use standard `spring-boot-starter-web` (blocking). Never use WebFlux or reactive types (`Mono`, `Flux`).
+4. **No hardcoded secrets**: All secrets come from environment variables. See `.env.example` for the full list.
+5. **YAML config only**: Services use `application.yml` and `application-prod.yml`. No `.properties` files.
+6. **Service URLs**: Services reach each other via Docker Compose DNS (e.g. `http://auth-service:9000`). URLs injected via `@Value` from env vars.
+7. **CORS lives at the gateway only**: Never add `@CrossOrigin` to any controller.
+8. **TypeScript strict**: Frontend is TypeScript strict mode. `bun run tsc --noEmit` must pass with zero errors.
+9. **Conventional commits**: All commits must follow Conventional Commits format (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`, `ci:`). commitlint enforces this.
+10. **Monorepo**: Backend is a Gradle multi-project build. Run `./gradlew :backend:<service-name>:build` for a specific service, or `./gradlew build` for all.
+11. **No Eureka, no Config Server**: Removed. Docker Compose DNS handles service discovery. Per-service YAML handles config.
 
 ## Directory Structure
 
@@ -43,8 +48,8 @@ snapserve/
 ├── backend/
 │   ├── api-gateway/           Spring Cloud Gateway
 │   ├── auth-service/          JWT auth
-│   ├── user-service/          Customer, Specialist, Admin profiles
-│   ├── booking-service/       Bookings, reviews, complaints
+│   ├── user-service/          Customer and specialist profiles
+│   ├── booking-service/       Bookings and reviews
 │   └── notification-service/  Email only
 ├── frontend/                  React + TypeScript + Bun
 ├── docker-compose.yml

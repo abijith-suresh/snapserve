@@ -1,5 +1,6 @@
 package com.snapserve.booking.dto.request;
 
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -11,4 +12,10 @@ public record UpdateBookingRequest(
             regexp = "PENDING|CONFIRMED|CANCELLED|COMPLETED",
             message = "Invalid status. Must be one of: PENDING, CONFIRMED, CANCELLED, COMPLETED")
         String status,
-    @Size(max = 1000, message = "Notes must not exceed 1000 characters") String notes) {}
+    @Size(max = 1000, message = "Notes must not exceed 1000 characters") String notes) {
+
+  @AssertTrue(message = "At least one field must be provided for update")
+  public boolean hasUpdates() {
+    return bookingDate != null || status != null || notes != null;
+  }
+}

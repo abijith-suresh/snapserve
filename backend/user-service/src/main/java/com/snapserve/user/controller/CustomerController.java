@@ -63,8 +63,22 @@ public class CustomerController {
       summary = "Get customer by ID",
       description = "Retrieve a specific customer by their ID")
   public ResponseEntity<ApiResponse<CustomerResponse>> getCustomerById(
-      @Parameter(description = "Customer ID") @PathVariable String id) {
-    CustomerResponse customer = userService.getCustomerById(id);
+      @Parameter(description = "Customer ID") @PathVariable String id,
+      @RequestHeader(value = "X-User-Email", required = false) String userEmail,
+      @RequestHeader(value = "X-User-Roles", required = false) String userRoles) {
+    CustomerResponse customer = userService.getCustomerById(id, userEmail, userRoles);
+    return ResponseEntity.ok(ApiResponse.ok(customer));
+  }
+
+  @GetMapping("/search")
+  @Operation(
+      summary = "Get customer by email",
+      description = "Retrieve a specific customer by their email address")
+  public ResponseEntity<ApiResponse<CustomerResponse>> getCustomerByEmail(
+      @Parameter(description = "Customer email") @RequestParam String email,
+      @RequestHeader(value = "X-User-Email", required = false) String userEmail,
+      @RequestHeader(value = "X-User-Roles", required = false) String userRoles) {
+    CustomerResponse customer = userService.getCustomerByEmail(email, userEmail, userRoles);
     return ResponseEntity.ok(ApiResponse.ok(customer));
   }
 
@@ -82,8 +96,10 @@ public class CustomerController {
   @Operation(summary = "Update customer", description = "Update an existing customer")
   public ResponseEntity<ApiResponse<CustomerResponse>> updateCustomer(
       @Parameter(description = "Customer ID") @PathVariable String id,
+      @RequestHeader("X-User-Email") String userEmail,
+      @RequestHeader("X-User-Roles") String userRoles,
       @Valid @RequestBody CustomerRequest request) {
-    CustomerResponse response = userService.updateCustomer(id, request);
+    CustomerResponse response = userService.updateCustomer(id, userEmail, userRoles, request);
     log.info("Customer updated via API: {}", request.email());
     return ResponseEntity.ok(ApiResponse.ok("Customer updated successfully", response));
   }
@@ -91,8 +107,10 @@ public class CustomerController {
   @DeleteMapping("/{id}")
   @Operation(summary = "Delete customer", description = "Delete a customer by ID")
   public ResponseEntity<ApiResponse<Void>> deleteCustomer(
-      @Parameter(description = "Customer ID") @PathVariable String id) {
-    userService.deleteCustomer(id);
+      @Parameter(description = "Customer ID") @PathVariable String id,
+      @RequestHeader("X-User-Email") String userEmail,
+      @RequestHeader("X-User-Roles") String userRoles) {
+    userService.deleteCustomer(id, userEmail, userRoles);
     log.info("Customer deleted via API: {}", id);
     return ResponseEntity.noContent().build();
   }

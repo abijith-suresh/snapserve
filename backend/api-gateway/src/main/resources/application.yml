@@ -3,17 +3,32 @@ spring:
     name: api-gateway
   cloud:
     gateway:
-      mvc:
-        routes:
-          - id: auth-service
-            uri: ${AUTH_SERVICE_URL}
-            predicates: [Path=/api/v1/auth/**]
-          - id: user-service
-            uri: ${USER_SERVICE_URL}
-            predicates: [Path=/api/v1/customers/**, Path=/api/v1/specialists/**]
-          - id: booking-service
-            uri: ${BOOKING_SERVICE_URL}
-            predicates: [Path=/api/v1/bookings/**, Path=/api/v1/reviews/**]
+      server:
+        webmvc:
+          routes:
+            - id: auth-service
+              uri: ${AUTH_SERVICE_URL}
+              predicates: [Path=/api/v1/auth/**]
+            - id: customer-service
+              uri: ${USER_SERVICE_URL}
+              predicates:
+                - Path=/api/v1/customers,/api/v1/customers/**
+            - id: specialist-service
+              uri: ${USER_SERVICE_URL}
+              predicates:
+                - Path=/api/v1/specialists,/api/v1/specialists/**
+            - id: booking-service
+              uri: ${BOOKING_SERVICE_URL}
+              predicates:
+                - Path=/api/v1/bookings,/api/v1/bookings/**
+            - id: review-service
+              uri: ${BOOKING_SERVICE_URL}
+              predicates:
+                - Path=/api/v1/reviews,/api/v1/reviews/**
+            - id: notification-service
+              uri: ${NOTIFICATION_SERVICE_URL}
+              predicates:
+                - Path=/api/v1/notifications,/api/v1/notifications/**
 
 server:
   port: 9090
@@ -25,7 +40,36 @@ cors:
   allowed-origins: ${ALLOWED_ORIGINS}
 
 management:
+  health:
+    mongo:
+      enabled: false
+    mongodb:
+      enabled: false
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-components: never
+      show-details: never
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+gateway:
+  rate-limit:
+    enabled: ${GATEWAY_RATE_LIMIT_ENABLED:false}
+    use-forwarded-for: ${GATEWAY_RATE_LIMIT_USE_FORWARDED_FOR:false}
+    requests-per-window: ${GATEWAY_RATE_LIMIT_REQUESTS_PER_WINDOW:120}
+    window-seconds: ${GATEWAY_RATE_LIMIT_WINDOW_SECONDS:60}
+    include-paths:
+      - /api/**
+    exclude-paths:
+      - /actuator/**
