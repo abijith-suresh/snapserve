@@ -17,7 +17,7 @@ dependencies {
     implementation(libs.spring.boot.starter.data.mongodb)
     implementation(libs.spring.boot.starter.actuator)
     implementation(libs.spring.boot.starter.validation)
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3")
     implementation("net.logstash.logback:logstash-logback-encoder:9.0")
     implementation("org.mapstruct:mapstruct:1.5.5.Final")
     compileOnly("org.projectlombok:lombok-mapstruct-binding:0.2.0")
