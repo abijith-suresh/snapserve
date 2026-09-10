@@ -12,7 +12,7 @@ dependencies {
     implementation(libs.spring.boot.starter.actuator)
     implementation(libs.spring.boot.starter.validation)
     implementation(libs.springdoc.openapi)
-    implementation(libs.flyway.core)
+    implementation(libs.spring.boot.starter.flyway)
 
     runtimeOnly(libs.flyway.database.postgresql)
     runtimeOnly(libs.postgresql)
