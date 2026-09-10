@@ -1,0 +1,14 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:snapserve;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+  flyway:
+    enabled: false
+  jpa:
+    hibernate:
+      ddl-auto: none
+
+security:
+  jwt:
+    secret: test-secret-for-snapserve-tests-that-is-at-least-sixty-four-bytes-long-0001
