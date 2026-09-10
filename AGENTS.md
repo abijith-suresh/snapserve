@@ -1,64 +1,70 @@
 # SnapServe — Agent Context
 
-SnapServe is a service-booking platform where customers book appointments with specialists
-(plumbers, electricians, etc). Admins manage specialist approvals and complaints.
+SnapServe is a booking platform for local services. Customers discover professionals such as
+plumbers and electricians, review their offerings, and request appointments. Professionals
+publish fixed-price or hourly offerings and manage booking requests.
 
 ## Architecture
 
-5 Spring Boot microservices + 1 React frontend:
+One Spring Boot modular monolith and one React frontend:
 
-| Service | Port | Responsibility |
-|---------|------|----------------|
-| api-gateway | 9090 | Routing, JWT validation, CORS, rate limiting |
-| auth-service | 9000 | Register, login, token management |
-| user-service | 9001 | Customer, Specialist, Admin profiles |
-| booking-service | 9002 | Bookings, reviews, complaints |
-| notification-service | 9003 | Email notifications |
+| Application | Port | Responsibility |
+| --- | --- | --- |
+| `backend/snapserve-api` | 8080 | Auth, profiles, offerings, availability, bookings, and reviews |
+| `frontend` | 3000 | Customer and professional web application |
+| PostgreSQL | 5432 | Persistent application data |
 
-Frontend runs on port 3000. All frontend API calls go through api-gateway at port 9090.
+The backend is one deployable application. Domain boundaries are represented by Java packages,
+not by separately deployed services. There is no API gateway, service discovery, Feign, admin
+workflow, complaints module, payments module, or notification service in the MVP.
 
-## Tech Stack
+## Tech stack
 
-- **Backend**: Java 21, Spring Boot 4.0.3, Spring Cloud 2025.1.1 (Oakwood), MongoDB Atlas, Gradle 8 (Kotlin DSL)
-- **Frontend**: React 18 + TypeScript, Bun, Vite, shadcn/ui, Tailwind CSS, Axios, React Query, Zustand
-- **Infra**: Docker Compose, GitHub Actions CI/CD
+- **Backend**: Java 25, Spring Boot 4.1.1, Spring MVC, Spring Security JWT, Spring Data JPA,
+  PostgreSQL, Flyway, Gradle Kotlin DSL
+- **Frontend**: React, TypeScript strict mode, Bun, Vite, Tailwind CSS, Axios, React Query,
+  Zustand
+- **Infra**: Docker Compose, GitHub Actions
 
-## Key Rules for Agents
+## Key rules for agents
 
-1. **Read the issue description carefully** — each issue is atomic and self-contained.
-2. **No WebFlux**: All services use standard `spring-boot-starter-web` (blocking). Never use WebFlux or reactive types (`Mono`, `Flux`).
-3. **No hardcoded secrets**: All secrets come from environment variables. See `.env.example` for the full list.
-4. **YAML config only**: Services use `application.yml` and `application-prod.yml`. No `.properties` files.
-5. **Service URLs**: Services reach each other via Docker Compose DNS (e.g. `http://auth-service:9000`). URLs injected via `@Value` from env vars.
-6. **CORS lives at the gateway only**: Never add `@CrossOrigin` to any controller.
-7. **TypeScript strict**: Frontend is TypeScript strict mode. `bun run tsc --noEmit` must pass with zero errors.
-8. **Conventional commits**: All commits must follow Conventional Commits format (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`, `ci:`). commitlint enforces this.
-9. **Monorepo**: Backend is a Gradle multi-project build. Run `./gradlew :backend:<service-name>:build` for a specific service, or `./gradlew build` for all.
-10. **No Eureka, no Config Server**: Removed. Docker Compose DNS handles service discovery. Per-service YAML handles config.
+1. Keep the MVP booking-first: customers request appointments; professionals accept or decline.
+2. No WebFlux: use standard blocking Spring MVC. Never add `Mono` or `Flux`.
+3. No hardcoded secrets. Use environment variables documented in `.env.example`.
+4. YAML configuration only. Use `application.yml` and profile-specific YAML files.
+5. PostgreSQL schema changes must be Flyway migrations. Keep `ddl-auto=validate`.
+6. CORS belongs in the backend security configuration. Do not add `@CrossOrigin` to controllers.
+7. Keep module boundaries explicit: use application services, and do not reach across modules into
+   another module's repositories or persistence models.
+8. TypeScript is strict. `bun run type-check` must pass with zero errors.
+9. Use Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`, `ci:`).
+10. Run `./gradlew build` for the backend and `cd frontend && bun run build` for the frontend.
 
-## Directory Structure
+## Directory structure
 
-```
+```text
 snapserve/
-├── backend/
-│   ├── api-gateway/           Spring Cloud Gateway
-│   ├── auth-service/          JWT auth
-│   ├── user-service/          Customer, Specialist, Admin profiles
-│   ├── booking-service/       Bookings, reviews, complaints
-│   └── notification-service/  Email only
-├── frontend/                  React + TypeScript + Bun
+├── backend/snapserve-api/
+│   ├── src/main/java/com/snapserve/
+│   │   ├── shared/
+│   │   ├── auth/
+│   │   ├── customer/
+│   │   ├── provider/
+│   │   ├── booking/
+│   │   └── review/
+│   └── src/main/resources/db/migration/
+├── frontend/
+├── docs/
 ├── docker-compose.yml
-├── docker-compose.prod.yml
-├── .env.example               All required env variable names (values blank)
-├── .github/workflows/         CI pipelines
-└── .husky/                    Pre-commit hooks
+├── .env.example
+└── .github/workflows/
 ```
 
-## Running Locally
+## Running locally
 
 ```bash
-cp .env.example .env   # fill in your values
+cp .env.example .env   # set POSTGRES_PASSWORD and JWT_SECRET
 docker compose up --build
-# Frontend: http://localhost:3000
-# API:      http://localhost:9090
+# API: http://localhost:8080
+# Frontend: run `cd frontend && bun run dev`
 ```
