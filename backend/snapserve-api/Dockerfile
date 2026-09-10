@@ -1,4 +1,4 @@
-FROM eclipse-temurin:25-jdk-alpine AS builder
+FROM docker.io/library/eclipse-temurin:25-jdk-alpine AS builder
 
 WORKDIR /workspace
 
@@ -10,7 +10,7 @@ COPY backend/snapserve-api backend/snapserve-api
 RUN chmod +x gradlew \
     && ./gradlew :backend:snapserve-api:bootJar --no-daemon
 
-FROM eclipse-temurin:25-jre-alpine
+FROM docker.io/library/eclipse-temurin:25-jre-alpine
 
 RUN apk add --no-cache wget \
     && addgroup -S snapserve \
