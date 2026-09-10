@@ -12,8 +12,8 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: oven-sh/setup-bun@v2
-        with: { bun-version: latest }
-      - run: bun install
+        with: { bun-version: '1.4.1' }
+      - run: bun install --frozen-lockfile
         working-directory: frontend
       - run: bun run lint
         working-directory: frontend
@@ -23,8 +23,8 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: oven-sh/setup-bun@v2
-        with: { bun-version: latest }
-      - run: bun install
+        with: { bun-version: '1.4.1' }
+      - run: bun install --frozen-lockfile
         working-directory: frontend
       - run: bun run type-check
         working-directory: frontend
@@ -35,8 +35,8 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: oven-sh/setup-bun@v2
-        with: { bun-version: latest }
-      - run: bun install
+        with: { bun-version: '1.4.1' }
+      - run: bun install --frozen-lockfile
         working-directory: frontend
       - run: bun run build
         working-directory: frontend
