@@ -1,7 +1,7 @@
 [versions]
 spring-boot  = "4.1.1"
 lombok       = "1.18.48"
-spotless     = "8.10.2"
+spotless     = "8.10.3"
 springdoc    = "3.1.1"
 
 [libraries]
