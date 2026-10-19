@@ -1,70 +1,42 @@
-# SnapServe — Agent Context
+# SnapServe — agent brief
+SnapServe is a two-language monorepo — one Spring Boot API plus one React app — for booking local
+services; this brief is for agents working in this checkout.
 
-SnapServe is a booking platform for local services. Customers discover professionals such as
-plumbers and electricians, review their offerings, and request appointments. Professionals
-publish fixed-price or hourly offerings and manage booking requests.
+## The Project
+Core promise: customers discover local professionals such as plumbers and electricians, compare
+fixed-price or hourly offerings, and request appointments; professionals publish offerings and
+accept or decline those requests.
+Non-goals: payments, complaints, admin approval workflows, and email notifications (the booking
+domain should emit application events before an email provider arrives). No API gateway, service
+discovery, Feign, or separately deployed services.
+Status: in-flight — the modular-monolith revival is stalled after the foundation (schema, security,
+app shell) landed; most domain modules and API endpoints are still planned.
+MVP shape: one primary role per account (`CUSTOMER` or `PROVIDER`, extensible later); offerings are
+`FIXED` or `HOURLY`; booking addresses are snapshotted so later profile edits never rewrite history.
 
-## Architecture
+## How I Work Here
+- Quality gate: `bun run verify` — runs the backend Gradle build (format check plus tests) and the frontend lint/type-check/build; run it before handoff.
+- Commits: Conventional Commits; the type list lives in `commitlint.config.js` (husky `commit-msg` hook). Never commit to main; land work through a PR.
+- No hardcoded secrets. Every value comes from environment variables documented in `.env.example`.
+- Backend and frontend build with different toolchains and are run separately; see `backend/AGENTS.md` for the Java side.
+- Frontend TypeScript is strict: `bun run type-check` must pass with zero errors. Biome owns lint and format, applied to staged files by lint-staged.
+- API contract: base path `/api/v1`, UUID identifiers, ISO-8601 UTC timestamps, errors as `application/problem+json` including the request path. Bookings follow the state machine in README § Architecture; transitions live in the booking application service, never in controllers.
+- Dev-server gotcha: Vite serves on 5173 by default while the API's CORS default is `http://localhost:3000`; set `CORS_ALLOWED_ORIGINS` (or run Vite on 3000) before calling the API from the browser.
 
-One Spring Boot modular monolith and one React frontend:
+## Sources of Truth
+| Fact | Where |
+|---|---|
+| Product intent | § The Project (this file) |
+| Runtime behavior | code + tests |
+| Commands & deps | `package.json`, `frontend/package.json`, `backend/snapserve-api/build.gradle.kts` |
+| Commit rules | `commitlint.config.js` |
+| Schema & config | `db/migration/`, `application.yml`, `.env.example` |
+Code and tests are the authority; this file never overrides executable truth.
 
-| Application | Port | Responsibility |
-| --- | --- | --- |
-| `backend/snapserve-api` | 8080 | Auth, profiles, offerings, availability, bookings, and reviews |
-| `frontend` | 3000 | Customer and professional web application |
-| PostgreSQL | 5432 | Persistent application data |
-
-The backend is one deployable application. Domain boundaries are represented by Java packages,
-not by separately deployed services. There is no API gateway, service discovery, Feign, admin
-workflow, complaints module, payments module, or notification service in the MVP.
-
-## Tech stack
-
-- **Backend**: Java 25, Spring Boot 4.1.1, Spring MVC, Spring Security JWT, Spring Data JPA,
-  PostgreSQL, Flyway, Gradle Kotlin DSL
-- **Frontend**: React, TypeScript strict mode, Bun, Vite, Tailwind CSS, Axios, React Query,
-  Zustand
-- **Infra**: Docker Compose, GitHub Actions
-
-## Key rules for agents
-
-1. Keep the MVP booking-first: customers request appointments; professionals accept or decline.
-2. No WebFlux: use standard blocking Spring MVC. Never add `Mono` or `Flux`.
-3. No hardcoded secrets. Use environment variables documented in `.env.example`.
-4. YAML configuration only. Use `application.yml` and profile-specific YAML files.
-5. PostgreSQL schema changes must be Flyway migrations. Keep `ddl-auto=validate`.
-6. CORS belongs in the backend security configuration. Do not add `@CrossOrigin` to controllers.
-7. Keep module boundaries explicit: use application services, and do not reach across modules into
-   another module's repositories or persistence models.
-8. TypeScript is strict. `bun run type-check` must pass with zero errors.
-9. Use Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`, `ci:`).
-10. Run `./gradlew build` for the backend and `cd frontend && bun run build` for the frontend.
-
-## Directory structure
-
-```text
-snapserve/
-├── backend/snapserve-api/
-│   ├── src/main/java/com/snapserve/
-│   │   ├── shared/
-│   │   ├── auth/
-│   │   ├── customer/
-│   │   ├── provider/
-│   │   ├── booking/
-│   │   └── review/
-│   └── src/main/resources/db/migration/
-├── frontend/
-├── docs/
-├── docker-compose.yml
-├── .env.example
-└── .github/workflows/
-```
-
-## Running locally
-
-```bash
-cp .env.example .env   # set POSTGRES_PASSWORD and JWT_SECRET
-docker compose up --build
-# API: http://localhost:8080
-# Frontend: run `cd frontend && bun run dev`
-```
+## Getting Around
+- `backend/` — Spring Boot modular monolith; the only Gradle module is `:backend:snapserve-api` (see `backend/AGENTS.md`).
+- `frontend/` — React 19 + Vite app on Bun; features in `src/features/`, shadcn/ui primitives in `src/components/ui/`, pages and routes in `src/pages` and `src/routes`, HTTP client and types in `src/shared/`.
+- `docker-compose.yml` — PostgreSQL 17 on 5432 and the API on 8080 for local runs.
+- `.github/workflows/` — backend CI (`spotlessCheck`, `build -x test`, `test`) and frontend CI (lint, type-check, build).
+- Root tooling — husky hooks in `.husky/` and staged-file rules in `.lintstagedrc.json`.
+- Module responsibilities and the planned API surface — README § Architecture.

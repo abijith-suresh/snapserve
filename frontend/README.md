@@ -1,6 +1,6 @@
 # Frontend
 
-React 19 + TypeScript + Tailwind CSS v4 + shadcn/ui + React Router v7
+React 19 + TypeScript + Tailwind CSS v4 + shadcn/ui + React Router v8
 
 ## Development
 
@@ -40,7 +40,7 @@ src/
 - **TypeScript** - Type safety
 - **Tailwind CSS v4** - Styling
 - **shadcn/ui** - UI components
-- **React Router v7** - Routing
+- **React Router v8** - Routing
 - **Zustand** - State management
 - **TanStack Query** - Server state
 - **React Hook Form** - Form handling
